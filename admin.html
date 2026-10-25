@@ -441,8 +441,17 @@
         '<button class="btn accent sm" id="runNow">' + I('refresh') + 'شغّل دورة النشر الآن</button></div></div></header>' + TH.strip(15);
     }
 
+    var CK = 'th_admin_cache_v1';
+    var LAST_LOAD = 0;
+    window.addEventListener('focus', function () { if (D && Date.now() - LAST_LOAD > 20000) load(true); });
     function load(silent) {
-      return TH.run('adminData', KEY).then(function (d) { D = d; render(); }).catch(function (e) {
+      if (!D) { try { var c = JSON.parse(localStorage.getItem(CK) || 'null'); if (c && c.k === KEY.slice(0, 6)) { D = c.d; render(); TH.toast('جارٍ تحديث البيانات…'); } } catch (e) { /* بدون كاش */ } }
+      LAST_LOAD = Date.now();
+      return TH.run('adminData', KEY).then(function (d) {
+        D = d; render();
+        try { localStorage.setItem(CK, JSON.stringify({ k: KEY.slice(0, 6), d: d })); } catch (e) { /* المساحة ممتلئة */ }
+      }).catch(function (e) {
+        if (D) return TH.toast('تعذر التحديث: ' + e.message, true);
         if (!silent) document.getElementById('panes').innerHTML = '<div class="note bad">' + I('alert') + '<div>تعذر تحميل البيانات: ' + E(e.message) + '</div></div>';
       });
     }
