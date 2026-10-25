@@ -145,7 +145,7 @@
     .pchips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
     .pchip { font-size: 12px; border-radius: 8px; padding: 1px 8px; background: #EEF0F6; color: var(--muted); display: inline-flex; gap: 4px; align-items: center; }
     .pchip svg { width: 12px; height: 12px; }
-    .pchip.done { background: var(--ok-soft); color: #1d6b47; } .pchip.error { background: var(--bad-soft); color: var(--bad); } .pchip.manual { background: var(--or-soft); color: #8a4f00; }
+    .pchip.done { background: var(--ok-soft); color: #1d6b47; } .pchip.error { background: var(--bad-soft); color: var(--bad); } .pchip.manual { background: var(--or-soft); color: #8a4f00; } .pchip.hold { background: var(--warn-soft); color: var(--warn); }
     .req .side { text-align: left; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
     .req .body { border-top: 1px solid var(--line); padding: 16px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
     @media (max-width: 860px) { .req .body { grid-template-columns: 1fr; } .req > summary { grid-template-columns: auto 1fr; } .req .side { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; } }
@@ -674,7 +674,7 @@
       var pv = img ? ' style="background-image:url(' + thumbUrl(img.id, 200) + ')"' : '';
       var chips = r.platforms.map(function (k) {
         var s = pState(r, k).state || '';
-        var ic = s === 'done' ? I('check') : s === 'error' ? I('alert') : s === 'manual' ? I('edit') : s === 'confirm' ? I('send') : s === 'processing' ? I('refresh') : I('clock');
+        var ic = s === 'done' ? I('check') : s === 'error' ? I('alert') : s === 'manual' ? I('edit') : s === 'confirm' ? I('send') : s === 'processing' ? I('refresh') : s === 'hold' ? I('alert') : I('clock');
         return '<span class="pchip ' + (s === 'confirm' ? 'manual' : s) + '">' + ic + (PN[k] || k) + '</span>';
       }).join('');
       var open = r._open ? ' open' : '';
@@ -702,7 +702,7 @@
       var res = r.platforms.map(function (k) {
         var s = pState(r, k), stt = s.state === 'done' ? '<span class="badge ok">منشور</span>' : s.state === 'error' ? '<span class="badge bad">فشل' + (s.attempts ? ' (' + s.attempts + ')' : '') + '</span>' :
           s.state === 'manual' ? '<span class="badge or">بانتظار نشر يدوي</span>' : s.state === 'confirm' ? '<span class="badge or">بانتظار تأكيدك</span>' :
-          s.state === 'processing' ? '<span class="badge navy">قيد المعالجة</span>' : '<span class="badge gray">لم يُنشر بعد</span>';
+          s.state === 'processing' ? '<span class="badge navy">قيد المعالجة</span>' : s.state === 'hold' ? '<span class="badge warn">موقوف للمراجعة</span>' : '<span class="badge gray">لم يُنشر بعد</span>';
         var body = '', cu = r.custom && r.custom[k];
         if (cu) body += '<div class="small" style="margin-top:6px;background:var(--or-soft);border-radius:10px;padding:6px 10px"><b>محتوى خاص لهذي المنصة:</b> ' +
           (cu.files && cu.files.length ? cu.files.length + ' من ' + r.files.length + ' ملفات' : 'نفس الملفات') + (cu.text ? '<div style="white-space:pre-wrap;margin-top:4px">' + E(cu.text) + '</div>' : ' · نفس النص العام') + '</div>';
@@ -1139,7 +1139,7 @@
         lnk('قاعدة البيانات (Google Sheet)', L.sheet) + lnk('مجلد المنصة في درايف', L.folder) + '</div>' +
         '<div class="pcard"><h3>ملفات لوائح النشر (PDF)</h3><p class="muted small" style="margin-top:0">تظهر هذه الملفات أعلى صفحة طلبات النشر. ارفع النسخة المعتمدة متى ما تحدّثت.</p><div id="polList">' + polHtml(D.policyFiles) + '</div>' +
         '<div class="actions"><label class="btn primary sm">' + I('upload') + 'رفع ملف PDF<input type="file" id="polUp" accept="application/pdf,.pdf" hidden></label></div><div class="bar hidden" id="polBar" style="margin-top:10px"><i></i></div></div>' +
-        '<div class="pcard"><h3>دورة النشر الآلي</h3><ul class="steps" style="padding-right:18px"><li>تعمل كل 12 ساعة على خوادم Google، حتى لو كل الأجهزة مطفية.</li><li>تنشر الطلبات <b>المعتمدة</b> التي حان موعدها فقط.</li>' +
+        '<div class="pcard"><h3>دورة النشر الآلي</h3><ul class="steps" style="padding-right:18px"><li>تعمل كل 3 ساعات على خوادم Google، حتى لو كل الأجهزة مطفية.</li><li>تنشر الطلبات <b>المعتمدة</b> التي حان موعدها فقط.</li>' +
         '<li>الطلب «المقبول» آليًا ينتظر موعده وينشر مباشرة بدون تدخل منك. لو تبي تعتمد كل طلب بنفسك، غيّر «طريقة النشر» من تبويب «المنصات المرتبطة».</li><li>آخر دورة: ' + E(D.lastRun ? TH.date(D.lastRun) : '—') + '</li></ul>' +
         '<div class="actions"><button class="btn accent" id="runNow2">' + I('refresh') + 'شغّل دورة النشر الآن</button></div></div></div>';
       document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function () { TH.copy(b.dataset.copy); }; });
