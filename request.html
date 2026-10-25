@@ -155,6 +155,20 @@
     .notes { text-align: right; margin: 14px auto 0; max-width: 560px; }
     .notes li { margin: 4px 0; }
   </style>
+<style>
+  .cust { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 12px; }
+  .cust-on { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .cust-on input { width: 18px; height: 18px; accent-color: var(--navy); }
+  .cust-row { border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-top: 10px; background: #fff; }
+  .cust-row > b { display: block; margin-bottom: 6px; }
+  .cust-files { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .cust-f { position: relative; width: 62px; height: 62px; border-radius: 10px; background: var(--bg) center/cover no-repeat; border: 2px solid var(--line); cursor: pointer; display: grid; place-items: center; }
+  .cust-f svg { width: 22px; height: 22px; color: var(--muted); }
+  .cust-f.on { border-color: var(--navy); }
+  .cust-f.on::after { content: '✓'; position: absolute; top: -7px; left: -7px; width: 20px; height: 20px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 12px; display: grid; place-items: center; }
+  .cust-f:not(.on) { opacity: .45; }
+  .cust-row textarea { min-height: 70px; }
+</style>
 </head>
 <body>
   <div id="hero"></div>
@@ -214,6 +228,11 @@
             <label class="tt-tg" style="display:flex;gap:6px;align-items:center;border:1.5px solid var(--line);border-radius:10px;padding:6px 12px;background:#fff;cursor:pointer"><input type="radio" name="yt" value="video"> فيديو عادي</label>
             <label class="tt-tg" style="display:flex;gap:6px;align-items:center;border:1.5px solid var(--line);border-radius:10px;padding:6px 12px;background:#fff;cursor:pointer"><input type="radio" name="yt" value="short"> شورت (Shorts)</label>
           </div><div class="hint">الشورت لازم يكون المقطع طولي ومدته 3 دقائق أو أقل.</div></div></div>
+        <div class="cust" id="custWrap">
+          <label class="cust-on"><input type="checkbox" id="custOn"> <b>محتوى مختلف لبعض المنصات</b> <span class="muted small">(اختياري)</span></label>
+          <div class="hint" style="margin-top:2px">مثال: صورة طولية لسناب ومربعة لإنستغرام، أو نص أقصر لواتساب.</div>
+          <div id="custBox" class="hidden"></div>
+        </div>
       </section>
 
 
@@ -296,6 +315,8 @@
     archive: '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/>',
     lock: '<rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    download: '<path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/>',
+    share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
     grid: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'
   };
   TH.icon = function (name, cls) {
@@ -438,12 +459,12 @@
       document.getElementById('plats').innerHTML = cfg.platforms.map(function (p) {
         return '<label class="plat"><input type="checkbox" name="plat" value="' + p.key + '"><span class="box">' + TH.icon('check') + '</span><div><b>' + TH.esc(p.name) + '</b><span>' + TH.esc(p.role) + '</span></div></label>';
       }).join('');
-      document.querySelectorAll('input[name=plat]').forEach(function (i) { i.addEventListener('change', counter); });
+      document.querySelectorAll('input[name=plat]').forEach(function (i) { i.addEventListener('change', function () { counter(); custSync(); }); });
       var pl = document.getElementById('policyList');
       pl.innerHTML = cfg.policyFiles.length ? cfg.policyFiles.map(function (f) {
         return '<a class="pdf-btn" href="' + f.url + '" target="_blank" rel="noopener"><span class="ic">' + TH.icon('pdf') + '</span><div><b>' + TH.esc(f.name) + '</b><span>PDF · ' + TH.size(f.size) + ' · اضغط للعرض</span></div></a>';
       }).join('') : '<div class="muted small">ملفات اللوائح لم تُرفع بعد.</div>';
-      counter();
+      counter(); custSync();
     }
 
     // ===== الملفات =====
@@ -466,7 +487,7 @@
         FILES.push(item);
         TH.probe(file).then(function (m) { item.meta = m; drawThumbs(); ytSync(true); });
       });
-      drawThumbs(); counter(); ytSync();
+      drawThumbs(); counter(); ytSync(); custSync();
     }
     function drawThumbs() {
       document.getElementById('thumbs').innerHTML = FILES.map(function (it) {
@@ -481,7 +502,7 @@
       var b = e.target.closest('[data-rm]');
       if (!b || SENDING) return;
       FILES = FILES.filter(function (x) { return x.key !== b.dataset.rm; });
-      drawThumbs(); counter(); ytSync();
+      drawThumbs(); counter(); ytSync(); custSync();
     });
 
     // ===== عدّاد النص حسب المنصة =====
@@ -512,6 +533,46 @@
       }
     }
     document.addEventListener('change', function (e) { if (e.target.name === 'yt') document.getElementById('ytBox').dataset.touched = '1'; });
+
+    // ===== محتوى مختلف لكل منصة =====
+    var CUSTOM = {}; // منصة → { off: {مفتاح ملف: true}, text: '' }
+    function selPlats() { return Array.prototype.map.call(document.querySelectorAll('input[name=plat]:checked'), function (i) { return i.value; }); }
+    function custSync() {
+      var on = document.getElementById('custOn').checked, box = document.getElementById('custBox'), sel = selPlats();
+      document.getElementById('custWrap').classList.toggle('hidden', sel.length < 1);
+      box.classList.toggle('hidden', !on);
+      if (!on) return;
+      if (!sel.length) { box.innerHTML = '<div class="hint">اختر المنصات أولًا.</div>'; return; }
+      box.innerHTML = sel.map(function (k) {
+        var c = CUSTOM[k] || (CUSTOM[k] = { off: {}, text: '' });
+        var fl = FILES.map(function (it) {
+          var bg = it.url ? ' style="background-image:url(' + it.url + ')"' : '';
+          return '<div class="cust-f' + (c.off[it.key] ? '' : ' on') + '" data-cp="' + k + '" data-cf="' + it.key + '" title="' + TH.esc(it.file.name) + '"' + bg + '>' + (it.url ? '' : TH.icon(/^video\//.test(it.mime) ? 'play' : 'pdf')) + '</div>';
+        }).join('');
+        return '<div class="cust-row"><b>' + TH.esc(NAMES[k] || k) + '</b>' + (FILES.length > 1 ? '<div class="cust-files">' + fl + '</div>' : '') +
+          '<textarea class="in" data-ct="' + k + '" placeholder="نص خاص لـ' + TH.esc(NAMES[k] || k) + ' — اتركه فاضي ويُستخدم النص العام">' + TH.esc(c.text) + '</textarea></div>';
+      }).join('') + (FILES.length > 1 ? '<div class="hint">اضغط على الملف عشان تشيله أو ترجعه لهذي المنصة.</div>' : '');
+    }
+    document.getElementById('custOn').addEventListener('change', custSync);
+    document.getElementById('custBox').addEventListener('click', function (e) {
+      var f = e.target.closest('[data-cf]'); if (!f) return;
+      var c = CUSTOM[f.dataset.cp], k = f.dataset.cf;
+      var onCount = FILES.filter(function (it) { return !c.off[it.key]; }).length;
+      if (!c.off[k] && onCount <= 1) return TH.toast('لازم يبقى ملف واحد على الأقل لكل منصة', true);
+      c.off[k] = !c.off[k]; f.classList.toggle('on', !c.off[k]);
+    });
+    document.getElementById('custBox').addEventListener('input', function (e) { var k = e.target.dataset.ct; if (k) CUSTOM[k].text = e.target.value; });
+    function customPayload(byKey) {
+      if (!document.getElementById('custOn').checked) return {};
+      var out = {};
+      selPlats().forEach(function (k) {
+        var c = CUSTOM[k]; if (!c) return;
+        var ids = FILES.filter(function (it) { return !c.off[it.key] && byKey[it.key]; }).map(function (it) { return byKey[it.key]; });
+        var anyOff = FILES.some(function (it) { return c.off[it.key]; });
+        if (anyOff || c.text.trim()) out[k] = { files: anyOff ? ids : [], text: c.text.trim() };
+      });
+      return out;
+    }
     document.getElementById('text').addEventListener('input', counter);
 
 
@@ -557,6 +618,7 @@
             setProgress((sent + p * it.file.size) / total, 'رفع الملف ' + (idx + 1) + ' من ' + FILES.length + '…');
           }).then(function (f) {
             sent += it.file.size;
+            it.fileId = f.id;
             it.uploaded = { id: f.id, w: it.meta.w || 0, h: it.meta.h || 0, dur: it.meta.dur || 0, yt: it === fv ? ytMode : '' };
             uploaded.push(it.uploaded); drawThumbs();
           });
@@ -567,7 +629,8 @@
         return TH.run('submitRequest', {
           name: name, phone: phone, program: document.getElementById('program').value,
           text: document.getElementById('text').value, desired: document.getElementById('desired').value,
-          platforms: plats, people: people, consent: false, files: uploaded
+          platforms: plats, people: people, consent: false, files: uploaded,
+          custom: customPayload(FILES.reduce(function (m, it) { m[it.key] = it.fileId || (it.uploaded && it.uploaded.id); return m; }, {}))
         });
       }).then(function (res) {
         showDone(res);

@@ -221,6 +221,12 @@
     .tt-tg { display: flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; font-size: 14px; }
     .tt-tg.dis { opacity: .55; cursor: not-allowed; }
     .tt-tg input { accent-color: var(--navy); }
+    .arch { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .arch-i { border: 1.5px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+    .arch-i .pv { display: grid; place-items: center; aspect-ratio: 1; background: var(--bg) center/cover no-repeat; }
+    .arch-i .pv .ic svg { width: 30px; height: 30px; color: var(--navy); }
+    .arch-i .meta { font-size: 12.5px; padding: 8px 10px 4px; line-height: 1.6; }
+    .arch-i .btn { margin: 4px 10px 10px; }
     .tt-cc { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 12px; }
     .consent { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: var(--warn-soft); cursor: pointer; font-size: 14px; }
     .consent input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--navy); }
@@ -307,6 +313,8 @@
     archive: '<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/>',
     lock: '<rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    download: '<path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/>',
+    share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
     grid: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'
   };
   TH.icon = function (name, cls) {
@@ -475,15 +483,15 @@
         el.onclick = function () { var g = el.dataset.go; if (g === '#issues') setTab('issues'); else { FILTER = g; setTab('requests'); } };
       });
       var tabs = [['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['platforms', 'plug', 'المنصات المرتبطة'], ['issues', 'alert', 'المشاكل', open],
-        ['media', 'film', 'مكتبة المقاطع', D.media.length], ['guide', 'book', 'دليل نشر إنستغرام'], ['settings', 'gear', 'الروابط والإعدادات']];
+        ['media', 'film', 'مكتبة المقاطع', D.media.length], ['archive', 'archive', 'الأرشيف'], ['guide', 'book', 'دليل نشر إنستغرام'], ['settings', 'gear', 'الروابط والإعدادات']];
       document.getElementById('tabs').innerHTML = tabs.map(function (t) {
         return '<button data-t="' + t[0] + '" class="' + (TAB === t[0] ? 'on' : '') + '">' + I(t[1]) + t[2] + (t[3] ? ' <span class="cnt">' + t[3] + '</span>' : '') + '</button>';
       }).join('');
       document.querySelectorAll('#tabs button').forEach(function (b) { b.onclick = function () { setTab(b.dataset.t); }; });
       document.getElementById('panes').innerHTML =
         '<section class="pane" id="p-requests"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
-        '<section class="pane" id="p-media"></section><section class="pane guide" id="p-guide"></section><section class="pane" id="p-settings"></section>';
-      renderRequests(); renderPlatforms(); renderIssues(); renderMedia(); renderGuide(); renderSettings();
+        '<section class="pane" id="p-media"></section><section class="pane" id="p-archive"></section><section class="pane guide" id="p-guide"></section><section class="pane" id="p-settings"></section>';
+      renderRequests(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
       setTab(TAB, true);
     }
     function setTab(t, noScroll) {
@@ -530,41 +538,90 @@
       });
       el.innerHTML = '<div class="toolbar">' + filters.map(function (f) { return '<button class="chip' + (FILTER === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + '</button>'; }).join('') +
         '<div class="search">' + I('search') + '<input class="in" id="q" placeholder="بحث بالاسم أو الرقم أو البرنامج" value="' + E(Q) + '"></div></div>' +
-        waQueueCard() + ttQueueCard() + (list.length ? list.map(reqCard).join('') : '<div class="empty">' + I('list') + '<p>لا توجد طلبات هنا.</p><p class="small">رابط صفحة الطلبات تلقاه في «الروابط والإعدادات».</p></div>');
+        (QITEMS = [], PREP = {}, '') + manualQueueCard() + ttQueueCard() + (list.length ? list.map(reqCard).join('') : '<div class="empty">' + I('list') + '<p>لا توجد طلبات هنا.</p><p class="small">رابط صفحة الطلبات تلقاه في «الروابط والإعدادات».</p></div>');
       el.querySelectorAll('.chip').forEach(function (c) { c.onclick = function () { FILTER = c.dataset.f; renderRequests(); }; });
       var q = document.getElementById('q');
       q.oninput = function () { Q = q.value; clearTimeout(q._t); q._t = setTimeout(function () { renderRequests(); var n = document.getElementById('q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); };
       el.querySelectorAll('[data-act]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); act(b); }; });
     }
 
-    function waQueueCard() {
-      var q = D.whatsappQueue || [];
+    // ===================== النشر اليدوي + «افتح في التطبيق» =====================
+    var QITEMS = [], PREP = {};
+    var PAPP = { whatsapp: ['واتساب', 'https://web.whatsapp.com/'], snapchat: ['سناب شات', 'https://web.snapchat.com/'], linkedin: ['لينكدين', 'https://www.linkedin.com/feed/'], tiktok: ['تيك توك', 'https://www.tiktok.com/tiktokstudio/upload'] };
+    function qBtns(x, idx) {
+      var dl = (x.files || []).map(function (f, i) { return '<a class="btn sm ghost" href="https://drive.google.com/uc?export=download&id=' + E(f.id) + '" target="_blank" rel="noopener">' + I('download') + (f.video ? 'المقطع' : 'الصورة') + (x.files.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join('');
+      return '<div class="actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' +
+        (x.files && x.files.length ? '<button class="btn sm primary" data-act="share" data-q="' + idx + '">' + I('share') + 'افتح في ' + E(PAPP[x.platform][0]) + '</button>' : '') +
+        '<button class="btn sm" data-act="qcopy" data-q="' + idx + '">' + I('copy') + 'نسخ النص</button>' + dl +
+        '<button class="btn sm ok" data-act="qdone" data-q="' + idx + '">' + I('check') + (x.platform === 'tiktok' ? 'تمت الجدولة' : 'تم النشر') + '</button></div>';
+    }
+    function qItem(x, idx) {
+      return '<div class="plat-res"><div class="hd"><b>' + E(x.id) + ' — ' + E(x.program || '') + '</b><span class="badge or">' + E(TH.date(x.desired)) + '</span></div>' +
+        '<div class="small" style="white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:8px 10px;margin-top:6px">' + E(x.caption) + '</div>' + qBtns(x, idx) + '</div>';
+    }
+    function manualQueueCard() {
+      var q = D.manualQueue || [];
       if (!q.length) return '';
-      return '<div class="card ttq"><div class="sec-title">' + I('send') + 'حزمة واتساب — للنشر اليوم</div>' +
-        '<p class="small muted" style="margin:0 0 10px">لكل منشور: حمّل الصورة، انسخ النص، وانشره في قنوات ومجتمعات ومجموعات الجمعية من رقمكم، ثم اضغط «تم النشر».</p>' +
-        q.map(function (x) {
-          var fl = x.files.length ? x.files.map(function (f, i) { return '<a class="btn sm" href="https://drive.google.com/uc?export=download&id=' + E(f.id) + '" target="_blank" rel="noopener">' + I(f.video ? 'play' : 'image') + 'تحميل ' + (f.video ? 'المقطع' : 'الصورة') + (x.files.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join('') : '';
-          return '<div class="plat-res"><div class="hd"><b>' + E(x.id) + ' — ' + E(x.program || '') + '</b><span class="badge or">' + E(TH.date(x.desired)) + '</span></div>' +
-            '<div class="small" style="white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:8px 10px;margin-top:6px">' + E(x.caption) + '</div>' +
-            '<div class="actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' + fl +
-            '<button class="btn sm" data-act="wacopy" data-id="' + E(x.id) + '">' + I('edit') + 'نسخ النص</button>' +
-            '<button class="btn sm ok" data-act="wadone" data-id="' + E(x.id) + '">' + I('check') + 'تم النشر</button></div></div>';
+      var groups = {};
+      q.forEach(function (x) { (groups[x.platform] = groups[x.platform] || []).push(x); });
+      return '<div class="card ttq"><div class="sec-title">' + I('send') + 'للنشر اليدوي اليوم</div>' +
+        '<p class="small muted" style="margin:0 0 10px">من الجوال: «افتح في التطبيق» يجهّز الملفات وينسخ النص، وبعدها تختار التطبيق والقناة أو المجموعة وتلصق النص. من الكمبيوتر: يحمّل الملفات وينسخ النص ويفتح موقع التطبيق.</p>' +
+        Object.keys(groups).map(function (k) {
+          return '<h4 style="margin:14px 0 4px">' + E(PAPP[k][0]) + (k === 'whatsapp' ? ' <span class="muted small" style="font-weight:400">— القنوات والمجتمعات والمجموعات</span>' : '') + '</h4>' +
+            groups[k].map(function (x) { QITEMS.push(x); return qItem(x, QITEMS.length - 1); }).join('');
         }).join('') + '</div>';
+    }
+    function b64ToBytes(b64) { var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+    function fetchFile(f, onP) {
+      var CH = 8 * 1024 * 1024, parts = [], got = 0, total = Number(f.size) || 0;
+      function next() {
+        return TH.run('adminFileChunk', KEY, f.id, got, CH).then(function (r) {
+          parts.push(b64ToBytes(r.b64)); got += r.n; if (onP) onP(total ? got / total : 0);
+          if (r.n < CH || (total && got >= total)) return new File(parts, f.name, { type: f.mime || 'application/octet-stream' });
+          return next();
+        });
+      }
+      return next();
+    }
+    function shareItem(b, x) {
+      var canFiles = navigator.canShare && navigator.share;
+      var prep = PREP[b.dataset.q];
+      if (!canFiles) { // كمبيوتر: تحميل + نسخ + فتح الموقع
+        copyText(x.caption);
+        (x.files || []).forEach(function (f) { window.open('https://drive.google.com/uc?export=download&id=' + f.id, '_blank'); });
+        window.open(PAPP[x.platform][1], '_blank');
+        return TH.toast('نُسخ النص وبدأ تحميل الملفات، وانفتح ' + PAPP[x.platform][0]);
+      }
+      if (prep) {
+        copyText(x.caption);
+        var data = { files: prep, text: x.caption };
+        if (!navigator.canShare(data)) data = { files: prep };
+        if (!navigator.canShare(data)) return TH.toast('جهازك ما يدعم مشاركة هذا النوع من الملفات. استخدم زر التحميل.', true);
+        return navigator.share(data).then(function () { TH.toast('اختر المنشور وتأكد من النص، ثم اضغط «تم النشر» هنا'); }).catch(function () { /* ألغى المشاركة */ });
+      }
+      b.disabled = true;
+      var n = x.files.length, i = 0, files = [];
+      var label = function (p) { b.innerHTML = '<span class="spin" style="border-color:rgba(255,255,255,.35);border-top-color:#fff"></span> جارٍ التجهيز ' + Math.round(((i + p) / n) * 100) + '%'; };
+      label(0);
+      var chain = Promise.resolve();
+      x.files.forEach(function (f) { chain = chain.then(function () { return fetchFile(f, label).then(function (file) { files.push(file); i++; }); }); });
+      chain.then(function () {
+        PREP[b.dataset.q] = files; b.disabled = false;
+        b.innerHTML = I('share') + 'جاهز — اضغط للفتح في ' + E(PAPP[x.platform][0]);
+        b.classList.add('accent');
+      }).catch(function (e) { b.disabled = false; b.innerHTML = I('share') + 'حاول مرة ثانية'; TH.toast(e.message, true); });
+    }
+    function copyText(t) {
+      try { navigator.clipboard.writeText(t).then(function () { TH.toast('نُسخ النص'); }, function () { prompt('انسخ النص:', t); }); } catch (e) { prompt('انسخ النص:', t); }
     }
 
     function ttQueueCard() {
       var q = D.tiktokQueue || [];
       if (D.ttAudited || !q.length) return '';
       return '<div class="card ttq"><div class="sec-title">' + I('send') + 'حزمة تيك توك الأسبوعية</div>' +
-        '<p class="small muted" style="margin:0 0 10px">افتح <a href="https://www.tiktok.com/tiktokstudio/upload" target="_blank" rel="noopener">TikTok Studio</a> من المتصفح. لكل مقطع: حمّله، ارفعه، الصق النص، اختر «جدولة» بالموعد والخصوصية «الجميع»، ثم اضغط «تمت الجدولة». ينزل لحاله في موعده حتى لو جهازك طافي.</p>' +
-        q.map(function (x) {
-          var vids = x.videos.length ? x.videos.map(function (v) { return '<a class="btn sm" href="https://drive.google.com/uc?export=download&id=' + E(v.id) + '" target="_blank" rel="noopener">' + I('play') + 'تحميل المقطع</a>'; }).join('') : '<span class="badge bad">لا يوجد مقطع فيديو</span>';
-          return '<div class="plat-res"><div class="hd"><b>' + E(x.id) + ' — ' + E(x.program || '') + '</b><span class="badge or">' + E(TH.date(x.desired)) + '</span></div>' +
-            '<div class="small" style="white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:8px 10px;margin-top:6px">' + E(x.caption) + '</div>' +
-            '<div class="actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' + vids +
-            '<button class="btn sm" data-act="ttcopy" data-id="' + E(x.id) + '">' + I('edit') + 'نسخ النص</button>' +
-            '<button class="btn sm ok" data-act="ttsched" data-id="' + E(x.id) + '">' + I('check') + 'تمت الجدولة</button></div></div>';
-        }).join('') + '</div>';
+        '<p class="small muted" style="margin:0 0 10px">من الجوال: «افتح في تيك توك» يفتح التطبيق ومعه المقطع، والنص منسوخ تلصقه في الوصف. من الكمبيوتر: يحمّل المقطع ويفتح TikTok Studio، وتقدر تجدوله هناك بموعده والخصوصية «الجميع».</p>' +
+        q.map(function (x0) { var x = { platform: 'tiktok', id: x0.id, program: x0.program, desired: x0.desired, caption: x0.caption, files: x0.videos }; QITEMS.push(x);
+          return (x.files.length ? '' : '<span class="badge bad">لا يوجد مقطع فيديو</span>') + qItem(x, QITEMS.length - 1); }).join('') + '</div>';
     }
 
     function reqCard(r) {
@@ -601,7 +658,9 @@
         var s = pState(r, k), stt = s.state === 'done' ? '<span class="badge ok">منشور</span>' : s.state === 'error' ? '<span class="badge bad">فشل' + (s.attempts ? ' (' + s.attempts + ')' : '') + '</span>' :
           s.state === 'manual' ? '<span class="badge or">بانتظار نشر يدوي</span>' : s.state === 'confirm' ? '<span class="badge or">بانتظار تأكيدك</span>' :
           s.state === 'processing' ? '<span class="badge navy">قيد المعالجة</span>' : '<span class="badge gray">لم يُنشر بعد</span>';
-        var body = '';
+        var body = '', cu = r.custom && r.custom[k];
+        if (cu) body += '<div class="small" style="margin-top:6px;background:var(--or-soft);border-radius:10px;padding:6px 10px"><b>محتوى خاص لهذي المنصة:</b> ' +
+          (cu.files && cu.files.length ? cu.files.length + ' من ' + r.files.length + ' ملفات' : 'نفس الملفات') + (cu.text ? '<div style="white-space:pre-wrap;margin-top:4px">' + E(cu.text) + '</div>' : ' · نفس النص العام') + '</div>';
         if (s.link) body += '<div style="margin-top:6px"><a href="' + E(s.link) + '" target="_blank" rel="noopener">' + I('link').replace('<svg', '<svg width="14" height="14" style="vertical-align:-2px"') + ' فتح المنشور</a>' + (s.at ? ' <span class="muted small">· ' + E(TH.date(s.at)) + '</span>' : '') + '</div>';
         if (s.error) body += '<div class="small" style="color:var(--bad);margin-top:6px">' + E(s.error) + '</div>';
         if (s.note) body += '<div class="small muted" style="margin-top:6px">' + E(s.note) + '</div>';
@@ -666,26 +725,14 @@
           desired: document.querySelector('[data-desired="' + id + '"]').value }).then(function (r) { TH.toast('حُفظ وأعيد الفحص: ' + r.status); replaceReq(r); });
       }
       if (a === 'ttconfirm') return tiktokDialog(findReq(id));
-      if (a === 'wacopy') {
-        var w = (D.whatsappQueue || []).filter(function (x) { return x.id === id; })[0];
-        if (w) navigator.clipboard.writeText(w.caption).then(function () { TH.toast('نُسخ النص'); }, function () { prompt('انسخ النص:', w.caption); });
-        return;
-      }
-      if (a === 'wadone') {
-        return call(b, 'adminMarkManual', id, 'whatsapp', '').then(function (r) {
-          D.whatsappQueue = (D.whatsappQueue || []).filter(function (x) { return x.id !== id; });
-          TH.toast('سُجّل النشر'); replaceReq(r); renderRequests();
-        });
-      }
-      if (a === 'ttcopy') {
-        var it = (D.tiktokQueue || []).filter(function (x) { return x.id === id; })[0];
-        if (it) navigator.clipboard.writeText(it.caption).then(function () { TH.toast('نُسخ النص'); }, function () { prompt('انسخ النص:', it.caption); });
-        return;
-      }
-      if (a === 'ttsched') {
-        return call(b, 'adminMarkManual', id, 'tiktok', '').then(function (r) {
-          D.tiktokQueue = (D.tiktokQueue || []).filter(function (x) { return x.id !== id; });
-          TH.toast('سُجّلت الجدولة'); replaceReq(r); renderRequests();
+      if (a === 'share') return shareItem(b, QITEMS[b.dataset.q]);
+      if (a === 'qcopy') return copyText(QITEMS[b.dataset.q].caption);
+      if (a === 'qdone') {
+        var qx = QITEMS[b.dataset.q];
+        return call(b, 'adminMarkManual', qx.id, qx.platform, '').then(function (r) {
+          D.manualQueue = (D.manualQueue || []).filter(function (x) { return !(x.id === qx.id && x.platform === qx.platform); });
+          if (qx.platform === 'tiktok') D.tiktokQueue = (D.tiktokQueue || []).filter(function (x) { return x.id !== qx.id; });
+          TH.toast('سُجّل'); replaceReq(r); renderRequests();
         });
       }
       if (a === 'rmfile') {
@@ -904,6 +951,45 @@
     }
 
     // ===================== مكتبة المقاطع =====================
+    // ===================== الأرشيف: كل ملف وصل بطلب =====================
+    var AF = { type: 'all', prog: '', q: '' };
+    function renderArchive() {
+      var el = document.getElementById('p-archive'); if (!el) return;
+      var items = [];
+      D.requests.forEach(function (r) { (r.files || []).forEach(function (f) { items.push({ f: f, r: r }); }); });
+      var progs = []; items.forEach(function (x) { if (x.r.program && progs.indexOf(x.r.program) < 0) progs.push(x.r.program); });
+      var kind = function (m) { return /^image\//.test(m) ? 'img' : /^video\//.test(m) ? 'vid' : 'pdf'; };
+      var list = items.filter(function (x) {
+        if (AF.type !== 'all' && kind(x.f.mime) !== AF.type) return false;
+        if (AF.prog && x.r.program !== AF.prog) return false;
+        if (AF.q && (x.r.id + ' ' + x.f.name + ' ' + x.r.name).toLowerCase().indexOf(AF.q.toLowerCase()) < 0) return false;
+        return true;
+      });
+      var byMonth = {};
+      list.forEach(function (x) { var d = new Date(x.r.created), m = isNaN(d) ? 'بدون تاريخ' : d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }); (byMonth[m] = byMonth[m] || []).push(x); });
+      var cnt = { img: 0, vid: 0, pdf: 0 }; items.forEach(function (x) { cnt[kind(x.f.mime)]++; });
+      el.innerHTML = '<div class="card"><div class="sec-title">' + I('archive') + 'أرشيف الملفات</div>' +
+        '<p class="small muted" style="margin:0 0 10px">كل صورة ومقطع وملف وصل مع طلب نشر، محفوظ في درايف الجمعية (مجلد «ملفات الطلبات») وما ينحذف حتى بعد النشر. ' +
+        '<a href="' + E(D.links.folder) + '" target="_blank" rel="noopener">فتح المجلد في درايف</a></p>' +
+        '<div class="toolbar">' + [['all', 'الكل (' + items.length + ')'], ['img', 'صور (' + cnt.img + ')'], ['vid', 'مقاطع (' + cnt.vid + ')'], ['pdf', 'PDF (' + cnt.pdf + ')']].map(function (t) {
+          return '<button class="chip' + (AF.type === t[0] ? ' on' : '') + '" data-at="' + t[0] + '">' + t[1] + '</button>'; }).join('') +
+        '<select class="in" id="aProg" style="width:auto"><option value="">كل البرامج</option>' + progs.map(function (p) { return '<option' + (AF.prog === p ? ' selected' : '') + '>' + E(p) + '</option>'; }).join('') + '</select>' +
+        '<div class="search">' + I('search') + '<input class="in" id="aQ" placeholder="بحث برقم الطلب أو اسم الملف" value="' + E(AF.q) + '"></div></div>' +
+        (list.length ? Object.keys(byMonth).map(function (m) {
+          return '<h4 style="margin:16px 0 8px">' + E(m) + ' <span class="muted small" style="font-weight:400">(' + byMonth[m].length + ')</span></h4><div class="arch">' +
+            byMonth[m].map(function (x) {
+              var k = kind(x.f.mime);
+              return '<div class="arch-i"><a class="pv" href="' + viewUrl(x.f.id) + '" target="_blank" rel="noopener" style="' + (k !== 'pdf' ? 'background-image:url(' + thumbUrl(x.f.id, 300) + ')' : '') + '">' + (k === 'img' ? '' : '<span class="ic">' + I(k === 'vid' ? 'play' : 'pdf') + '</span>') + '</a>' +
+                '<div class="meta"><b>' + E(x.r.id) + '</b> · ' + E(x.r.program || '') + '<br><span class="muted">' + E(TH.date(x.r.created, false)) + ' · ' + TH.size(x.f.size) + '</span></div>' +
+                '<a class="btn sm ghost" href="https://drive.google.com/uc?export=download&id=' + E(x.f.id) + '" target="_blank" rel="noopener">' + I('download') + 'تحميل</a></div>';
+            }).join('') + '</div>';
+        }).join('') : '<div class="empty">' + I('archive') + '<p>ما فيه ملفات هنا.</p></div>') + '</div>';
+      el.querySelectorAll('[data-at]').forEach(function (c) { c.onclick = function () { AF.type = c.dataset.at; renderArchive(); }; });
+      el.querySelector('#aProg').onchange = function () { AF.prog = this.value; renderArchive(); };
+      var q = el.querySelector('#aQ');
+      q.oninput = function () { AF.q = q.value; clearTimeout(q._t); q._t = setTimeout(function () { renderArchive(); var n = document.getElementById('aQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); };
+    }
+
     function renderMedia() {
       var el = document.getElementById('p-media');
       el.innerHTML = '<div class="card" style="margin-top:0"><h2 class="sec-title">' + TH.star().replace('<svg', '<svg width="14" height="14"') + 'رفع مقاطع وصور للمكتبة</h2>' +
