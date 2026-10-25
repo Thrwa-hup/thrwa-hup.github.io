@@ -409,6 +409,40 @@
       setTimeout(function () { done({}); }, 6000);
     });
   };
+  /* نسخة جاهزة لإنستغرام: JPEG، عرض حتى 1440، والمقاس بين 4:5 و 1.91:1 (يضيف إطار بلون حواف الصورة بدل القص) */
+  TH.igNeeds = function (mime, w, h) {
+    if (!/^image\//.test(mime || '')) return false;
+    if (!/^image\/(jpeg|png)$/.test(mime)) return true;
+    if (!w || !h) return false;
+    var r = w / h;
+    return r < 0.8 || r > 1.91 || w > 1440;
+  };
+  TH.igPrep = function (file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('المتصفح ما قدر يفتح الصورة «' + file.name + '».')); };
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight, r = w / h, cw = w, ch = h;
+        if (r < 0.8) cw = Math.round(h * 0.8); else if (r > 1.91) ch = Math.round(w / 1.91);
+        var sc = Math.min(1, 1440 / cw), c = document.createElement('canvas');
+        c.width = Math.round(cw * sc); c.height = Math.round(ch * sc);
+        var g = c.getContext('2d');
+        // لون الإطار = متوسط حواف الصورة
+        var t = document.createElement('canvas'); t.width = 24; t.height = 24; var tg = t.getContext('2d'); tg.drawImage(img, 0, 0, 24, 24);
+        var d = tg.getImageData(0, 0, 24, 24).data, R = 0, G = 0, B = 0, n = 0;
+        for (var i = 0; i < 24; i++) for (var j = 0; j < 24; j++) { if (i && j && i < 23 && j < 23) continue; var k = (j * 24 + i) * 4; R += d[k]; G += d[k + 1]; B += d[k + 2]; n++; }
+        g.fillStyle = 'rgb(' + Math.round(R / n) + ',' + Math.round(G / n) + ',' + Math.round(B / n) + ')';
+        g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, Math.round((cw - w) / 2 * sc), Math.round((ch - h) / 2 * sc), Math.round(w * sc), Math.round(h * sc));
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) {
+          if (!b) return rej(new Error('تعذر تجهيز الصورة.'));
+          res(new File([b], 'ig_' + String(file.name || 'image').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.92);
+      };
+      img.src = url;
+    });
+  };
   TH.size = function (b) { b = Number(b) || 0; return b > 1048576 ? (b / 1048576).toFixed(1) + ' م.ب' : Math.max(1, Math.round(b / 1024)) + ' ك.ب'; };
   TH.esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   TH.date = function (iso, withTime) {
@@ -571,8 +605,19 @@
             groups[k].map(function (x) { QITEMS.push(x); return qItem(x, QITEMS.length - 1); }).join('');
         }).join('') + '</div>';
     }
+    function igTodo(r) { return (r.files || []).filter(function (f) { return !f.ig && TH.igNeeds(f.mime, f.w, f.h); }); }
     function b64ToBytes(b64) { var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
     function fetchFile(f, onP) {
+      if (window.TH_FILE) { // خادم Cloud Run: تحميل مباشر سريع
+        return fetch(window.TH_FILE + '/file?id=' + encodeURIComponent(f.id) + '&key=' + encodeURIComponent(KEY)).then(function (res) {
+          if (!res.ok) throw new Error('تعذر تحميل الملف (' + res.status + ').');
+          var total = Number(res.headers.get('content-length')) || Number(f.size) || 0;
+          if (!res.body || !res.body.getReader) return res.blob().then(function (b) { return new File([b], f.name, { type: f.mime || b.type }); });
+          var rd = res.body.getReader(), parts = [], got = 0;
+          function pump() { return rd.read().then(function (x) { if (x.done) return new File(parts, f.name, { type: f.mime || 'application/octet-stream' }); parts.push(x.value); got += x.value.length; if (onP && total) onP(got / total); return pump(); }); }
+          return pump();
+        });
+      }
       var CH = 8 * 1024 * 1024, parts = [], got = 0, total = Number(f.size) || 0;
       function next() {
         return TH.run('adminFileChunk', KEY, f.id, got, CH).then(function (r) {
@@ -688,6 +733,7 @@
         '<div class="actions">' +
         (r.status !== 'منشور' ? '<button class="btn sm ok" data-act="approve" data-id="' + E(r.id) + '">' + I('check') + 'اعتماد</button>' : '') +
         (canPublish ? '<button class="btn sm primary" data-act="publish" data-id="' + E(r.id) + '">' + I('send') + 'انشر الآن</button>' : '') +
+        (r.platforms.indexOf('instagram') > -1 && igTodo(r).length ? '<button class="btn sm accent" data-act="igprep" data-id="' + E(r.id) + '">' + I('image') + 'تجهيز الصور لإنستغرام (' + igTodo(r).length + ')</button>' : '') +
         (r.status !== 'مرفوض' && r.status !== 'منشور' ? '<button class="btn sm bad" data-act="reject" data-id="' + E(r.id) + '">' + I('x') + 'رفض</button>' : '') +
         (r.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-act="archive" data-id="' + E(r.id) + '">' + I('archive') + 'أرشفة</button>' : '') +
         '</div></div></div>';
@@ -725,6 +771,17 @@
           desired: document.querySelector('[data-desired="' + id + '"]').value }).then(function (r) { TH.toast('حُفظ وأعيد الفحص: ' + r.status); replaceReq(r); });
       }
       if (a === 'ttconfirm') return tiktokDialog(findReq(id));
+      if (a === 'igprep') {
+        var rr = findReq(id), todo = igTodo(rr), k = 0;
+        busy(b, true);
+        var ch = Promise.resolve();
+        todo.forEach(function (f) {
+          ch = ch.then(function () { return fetchFile(f); }).then(TH.igPrep).then(function (jf) { return TH.upload(jf, 'request', ''); }).then(function (g) { f.ig = g.id; k++; });
+        });
+        return ch.then(function () { return TH.run('adminUpdateRequest', KEY, id, { files: rr.files }); }).then(function (nr) {
+          busy(b, false); replaceReq(nr); TH.toast('تجهّزت ' + k + ' صورة لإنستغرام. اضغط «انشر الآن» أو تنتظر موعدها.');
+        }).catch(function (e) { busy(b, false); TH.toast(e.message, true); });
+      }
       if (a === 'share') return shareItem(b, QITEMS[b.dataset.q]);
       if (a === 'qcopy') return copyText(QITEMS[b.dataset.q].caption);
       if (a === 'qdone') {

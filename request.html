@@ -411,6 +411,40 @@
       setTimeout(function () { done({}); }, 6000);
     });
   };
+  /* نسخة جاهزة لإنستغرام: JPEG، عرض حتى 1440، والمقاس بين 4:5 و 1.91:1 (يضيف إطار بلون حواف الصورة بدل القص) */
+  TH.igNeeds = function (mime, w, h) {
+    if (!/^image\//.test(mime || '')) return false;
+    if (!/^image\/(jpeg|png)$/.test(mime)) return true;
+    if (!w || !h) return false;
+    var r = w / h;
+    return r < 0.8 || r > 1.91 || w > 1440;
+  };
+  TH.igPrep = function (file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('المتصفح ما قدر يفتح الصورة «' + file.name + '».')); };
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight, r = w / h, cw = w, ch = h;
+        if (r < 0.8) cw = Math.round(h * 0.8); else if (r > 1.91) ch = Math.round(w / 1.91);
+        var sc = Math.min(1, 1440 / cw), c = document.createElement('canvas');
+        c.width = Math.round(cw * sc); c.height = Math.round(ch * sc);
+        var g = c.getContext('2d');
+        // لون الإطار = متوسط حواف الصورة
+        var t = document.createElement('canvas'); t.width = 24; t.height = 24; var tg = t.getContext('2d'); tg.drawImage(img, 0, 0, 24, 24);
+        var d = tg.getImageData(0, 0, 24, 24).data, R = 0, G = 0, B = 0, n = 0;
+        for (var i = 0; i < 24; i++) for (var j = 0; j < 24; j++) { if (i && j && i < 23 && j < 23) continue; var k = (j * 24 + i) * 4; R += d[k]; G += d[k + 1]; B += d[k + 2]; n++; }
+        g.fillStyle = 'rgb(' + Math.round(R / n) + ',' + Math.round(G / n) + ',' + Math.round(B / n) + ')';
+        g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, Math.round((cw - w) / 2 * sc), Math.round((ch - h) / 2 * sc), Math.round(w * sc), Math.round(h * sc));
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) {
+          if (!b) return rej(new Error('تعذر تجهيز الصورة.'));
+          res(new File([b], 'ig_' + String(file.name || 'image').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.92);
+      };
+      img.src = url;
+    });
+  };
   TH.size = function (b) { b = Number(b) || 0; return b > 1048576 ? (b / 1048576).toFixed(1) + ' م.ب' : Math.max(1, Math.round(b / 1024)) + ' ك.ب'; };
   TH.esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   TH.date = function (iso, withTime) {
@@ -619,7 +653,13 @@
           }).then(function (f) {
             sent += it.file.size;
             it.fileId = f.id;
-            it.uploaded = { id: f.id, w: it.meta.w || 0, h: it.meta.h || 0, dur: it.meta.dur || 0, yt: it === fv ? ytMode : '' };
+            // نسخة جاهزة لإنستغرام لو الصورة WEBP/HEIC أو مقاسها خارج 4:5 – 1.91:1
+            if (plats.indexOf('instagram') > -1 && TH.igNeeds(it.mime, it.meta.w, it.meta.h)) {
+              return TH.igPrep(it.file).then(function (jf) { return TH.upload(jf, 'request', ''); }).then(function (g) { it.igId = g.id; return f; }, function () { return f; });
+            }
+            return f;
+          }).then(function (f) {
+            it.uploaded = { id: f.id, ig: it.igId || '', w: it.meta.w || 0, h: it.meta.h || 0, dur: it.meta.dur || 0, yt: it === fv ? ytMode : '' };
             uploaded.push(it.uploaded); drawThumbs();
           });
         });
