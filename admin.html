@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="favicon.png"><link rel="apple-touch-icon" href="icon.png"><meta name="theme-color" content="#202658">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=El+Messiri:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --navy: #292F69; --navy-deep: #202658; --navy-2: #303779;
@@ -31,9 +31,9 @@
   .hero .sky { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .hero-inner { position: relative; max-width: 1100px; margin: 0 auto; padding: 34px 20px 26px; display: flex; align-items: center; gap: 26px; }
   .hero-logo { height: 150px; width: auto; flex: none; filter: drop-shadow(0 6px 18px rgba(0,0,0,.18)); }
-  .hero h1 { font-family: 'DecoType Thuluth II', 'DecoType Thuluth', 'Aref Ruqaa', serif; font-weight: 400; font-size: clamp(40px, 7vw, 64px); line-height: 1.25; margin: 0 0 4px; letter-spacing: 0; }
+  .hero h1 { font-family: 'El Messiri', 'Amiri', serif; font-weight: 700; font-size: clamp(34px, 6vw, 54px); line-height: 1.3; margin: 0 0 4px; letter-spacing: 0; }
   .hero p { margin: 0; color: #CFE9EE; font-weight: 300; max-width: 560px; }
-  .hero .pill { font-family: 'DecoType Thuluth II', 'DecoType Thuluth', 'Aref Ruqaa', serif; font-size: 17px !important; display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; background: var(--or); color: var(--navy); font-weight: 500; font-size: 13px; padding: 4px 14px; border-radius: 99px; }
+  .hero .pill { font-family: 'El Messiri', 'Amiri', serif; font-size: 15px !important; display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; background: var(--or); color: var(--navy); font-weight: 500; font-size: 13px; padding: 4px 14px; border-radius: 99px; }
   .strip { display: flex; justify-content: center; gap: 16px; padding: 14px 0 12px; position: relative; }
   .strip svg { width: 15px; height: 15px; flex: none; }
   @media (max-width: 640px) {
@@ -221,6 +221,12 @@
     .tt-tg { display: flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); border-radius: 10px; padding: 6px 12px; cursor: pointer; font-size: 14px; }
     .tt-tg.dis { opacity: .55; cursor: not-allowed; }
     .tt-tg input { accent-color: var(--navy); }
+    .appstep { border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-top: 10px; display: grid; gap: 8px; }
+    .appfiles { display: flex; flex-wrap: wrap; gap: 8px; }
+    .appfiles a { position: relative; width: 74px; height: 74px; border-radius: 10px; background: var(--bg) center/cover no-repeat; border: 1.5px solid var(--line); display: grid; place-items: center; }
+    .appfiles .ic svg { width: 24px; height: 24px; color: var(--navy); }
+    .appfiles .dl { position: absolute; bottom: 4px; left: 4px; width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; }
+    .appfiles .dl svg { width: 13px; height: 13px; }
     .arch { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
     .arch-i { border: 1.5px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
     .arch-i .pv { display: grid; place-items: center; aspect-ratio: 1; background: var(--bg) center/cover no-repeat; }
@@ -572,7 +578,7 @@
       });
       el.innerHTML = '<div class="toolbar">' + filters.map(function (f) { return '<button class="chip' + (FILTER === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + '</button>'; }).join('') +
         '<div class="search">' + I('search') + '<input class="in" id="q" placeholder="بحث بالاسم أو الرقم أو البرنامج" value="' + E(Q) + '"></div></div>' +
-        (QITEMS = [], PREP = {}, '') + manualQueueCard() + ttQueueCard() + (list.length ? list.map(reqCard).join('') : '<div class="empty">' + I('list') + '<p>لا توجد طلبات هنا.</p><p class="small">رابط صفحة الطلبات تلقاه في «الروابط والإعدادات».</p></div>');
+        (list.length ? list.map(reqCard).join('') : '<div class="empty">' + I('list') + '<p>لا توجد طلبات هنا.</p><p class="small">رابط صفحة الطلبات تلقاه في «الروابط والإعدادات».</p></div>');
       el.querySelectorAll('.chip').forEach(function (c) { c.onclick = function () { FILTER = c.dataset.f; renderRequests(); }; });
       var q = document.getElementById('q');
       q.oninput = function () { Q = q.value; clearTimeout(q._t); q._t = setTimeout(function () { renderRequests(); var n = document.getElementById('q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); };
@@ -604,6 +610,67 @@
           return '<h4 style="margin:14px 0 4px">' + E(PAPP[k][0]) + (k === 'whatsapp' ? ' <span class="muted small" style="font-weight:400">— القنوات والمجتمعات والمجموعات</span>' : '') + '</h4>' +
             groups[k].map(function (x) { QITEMS.push(x); return qItem(x, QITEMS.length - 1); }).join('');
         }).join('') + '</div>';
+    }
+    function isManualPlat(k) { return ['whatsapp', 'snapchat', 'linkedin'].indexOf(k) > -1 || (k === 'tiktok' && !D.ttAudited); }
+    function platView(r, k) {
+      var c = (r.custom || {})[k] || {};
+      var files = (c.files && c.files.length ? r.files.filter(function (f) { return c.files.indexOf(f.id) > -1; }) : r.files).filter(function (f) { return /^(image|video)\//.test(f.mime); });
+      if (k === 'tiktok') files = files.filter(function (f) { return /^video\//.test(f.mime); });
+      return { files: files, text: c.text || r.text };
+    }
+    var APPLINK = {
+      whatsapp: function (t, mob) { return mob ? 'whatsapp://send?text=' + encodeURIComponent(t) : 'https://web.whatsapp.com/'; },
+      snapchat: function (t, mob) { return mob ? 'snapchat://' : 'https://web.snapchat.com/'; },
+      tiktok: function (t, mob) { return mob ? 'snssdk1233://' : 'https://www.tiktok.com/tiktokstudio/upload'; },
+      linkedin: function (t) { return 'https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(t); }
+    };
+    function copySync(t) {
+      var ok = false, ta = document.createElement('textarea');
+      ta.value = t; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, t.length);
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.remove();
+      if (!ok && navigator.clipboard) navigator.clipboard.writeText(t).then(function () {}, function () {});
+      return true;
+    }
+    function openApp(r, k) {
+      var v = platView(r, k), mob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent), name = PN[k] || k;
+      var canShare = !!(navigator.canShare && navigator.share);
+      var m = document.createElement('div'); m.className = 'modal';
+      m.innerHTML = '<div class="mbox"><h3 style="margin:0 0 4px">النشر في ' + E(name) + ' — ' + E(r.id) + '</h3>' +
+        '<div class="muted small">ثلاث خطوات، كل وحدة بزر:</div>' +
+        '<div class="appstep"><b>١) النص</b><textarea class="in" readonly style="min-height:90px">' + E(v.text) + '</textarea>' +
+          '<button class="btn sm" data-x="copy">' + I('copy') + 'نسخ النص</button></div>' +
+        '<div class="appstep"><b>٢) ' + (v.files.length > 1 ? 'الملفات (' + v.files.length + ') — تنزل مع بعض في نفس المنشور' : 'الملف') + '</b><div class="appfiles">' +
+          v.files.map(function (f) { return '<a href="https://drive.google.com/uc?export=download&id=' + E(f.id) + '" target="_blank" rel="noopener" style="background-image:url(' + thumbUrl(f.id, 200) + ')" title="تحميل">' + (/^video\//.test(f.mime) ? '<span class="ic">' + I('play') + '</span>' : '') + '<span class="dl">' + I('download') + '</span></a>'; }).join('') +
+          '</div>' + (mob && canShare ? '<button class="btn sm primary" data-x="prep">' + I('share') + 'جهّز الملفات للمشاركة</button><div class="hint">بعد التجهيز اضغط «شارك» واختر ' + E(name) + '.</div>' : '<div class="hint">اضغط على الملف عشان تحمّله.</div>') + '</div>' +
+        '<div class="appstep"><b>٣) افتح ' + E(name) + '</b><a class="btn sm accent" data-x="open" href="' + APPLINK[k](v.text, mob) + '" target="_blank" rel="noopener">' + I('link') + 'افتح ' + E(name) + '</a>' +
+          '<div class="hint">' + (k === 'whatsapp' ? 'اختر القناة أو المجموعة أو المجتمع، والصق النص مع الصورة.' : k === 'tiktok' ? 'ارفع المقطع والصق النص، واختر «الجميع».' : 'ارفع الملف والصق النص.') + '</div></div>' +
+        '<div class="actions"><button class="btn ok" data-x="done">' + I('check') + 'نشرته — سجّل كمنشور</button><button class="btn ghost" data-x="close">إغلاق</button></div></div>';
+      document.body.appendChild(m);
+      m.onclick = function (e) { if (e.target === m) m.remove(); };
+      var prepared = null;
+      m.querySelector('[data-x=copy]').onclick = function () { copySync(v.text); TH.toast('نُسخ النص'); };
+      m.querySelector('[data-x=open]').addEventListener('click', function () { copySync(v.text); });
+      m.querySelector('[data-x=close]').onclick = function () { m.remove(); };
+      m.querySelector('[data-x=done]').onclick = function () { var b = this; call(b, 'adminMarkManual', r.id, k, '').then(function (nr) { m.remove(); TH.toast('سُجّل منشور في ' + name); replaceReq(nr); }); };
+      var pb = m.querySelector('[data-x=prep]');
+      if (pb) pb.onclick = function () {
+        if (prepared) {
+          copySync(v.text);
+          var data = { files: prepared, text: v.text };
+          if (!navigator.canShare(data)) data = { files: prepared };
+          if (!navigator.canShare(data)) return TH.toast('جهازك ما يدعم مشاركة هذي الملفات. حمّلها من فوق.', true);
+          return navigator.share(data).catch(function () {});
+        }
+        pb.disabled = true; var n = v.files.length, i = 0, out = [];
+        var lab = function (p) { pb.innerHTML = '<span class="spin" style="border-color:rgba(255,255,255,.35);border-top-color:#fff"></span> جارٍ التجهيز ' + Math.round(((i + p) / n) * 100) + '%'; };
+        lab(0);
+        var ch = Promise.resolve();
+        v.files.forEach(function (f) { ch = ch.then(function () { return fetchFile(f, lab).then(function (x) { out.push(x); i++; }); }); });
+        ch.then(function () { prepared = out; pb.disabled = false; pb.innerHTML = I('share') + 'شارك الحين'; pb.classList.add('accent'); })
+          .catch(function (e) { pb.disabled = false; pb.innerHTML = I('share') + 'حاول مرة ثانية'; TH.toast(e.message, true); });
+      };
     }
     function igTodo(r) { return (r.files || []).filter(function (f) { return !f.ig && TH.igNeeds(f.mime, f.w, f.h); }); }
     function b64ToBytes(b64) { var bin = atob(b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
@@ -710,6 +777,7 @@
         if (s.error) body += '<div class="small" style="color:var(--bad);margin-top:6px">' + E(s.error) + '</div>';
         if (s.note) body += '<div class="small muted" style="margin-top:6px">' + E(s.note) + '</div>';
         if (k === 'tiktok' && s.state !== 'done' && s.state !== 'processing' && tiktokConnected()) body += '<div class="actions" style="margin-top:8px"><button class="btn sm primary" data-act="ttconfirm" data-id="' + E(r.id) + '">' + I('send') + 'نشر في تيك توك</button></div>';
+        if (isManualPlat(k) && s.state !== 'done' && s.state !== 'hold' && (r.files || []).length) body += '<div class="actions" style="margin-top:8px"><button class="btn sm primary" data-act="openapp" data-id="' + E(r.id) + '" data-p="' + k + '">' + I('share') + 'جهّز وافتح ' + (PN[k] || k) + '</button></div>';
         if (s.state === 'manual' || s.state === 'error') body += '<div class="man"><input class="in" placeholder="رابط المنشور بعد نشره بنفسك (اختياري)" data-link="' + k + '"><button class="btn sm ok" data-act="manual" data-id="' + E(r.id) + '" data-p="' + k + '">' + I('check') + 'نشرته بنفسي</button></div>';
         return '<div class="plat-res"><div class="hd"><b>' + (PN[k] || k) + '</b>' + stt + '</div>' + body + '</div>';
       }).join('');
@@ -736,6 +804,7 @@
         (r.platforms.indexOf('instagram') > -1 && igTodo(r).length ? '<button class="btn sm accent" data-act="igprep" data-id="' + E(r.id) + '">' + I('image') + 'تجهيز الصور لإنستغرام (' + igTodo(r).length + ')</button>' : '') +
         (r.status !== 'مرفوض' && r.status !== 'منشور' ? '<button class="btn sm bad" data-act="reject" data-id="' + E(r.id) + '">' + I('x') + 'رفض</button>' : '') +
         (r.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-act="archive" data-id="' + E(r.id) + '">' + I('archive') + 'أرشفة</button>' : '') +
+        '<button class="btn sm bad" data-act="del" data-id="' + E(r.id) + '">' + I('trash') + 'حذف</button>' +
         '</div></div></div>';
     }
 
@@ -781,6 +850,15 @@
         return ch.then(function () { return TH.run('adminUpdateRequest', KEY, id, { files: rr.files }); }).then(function (nr) {
           busy(b, false); replaceReq(nr); TH.toast('تجهّزت ' + k + ' صورة لإنستغرام. اضغط «انشر الآن» أو تنتظر موعدها.');
         }).catch(function (e) { busy(b, false); TH.toast(e.message, true); });
+      }
+      if (a === 'openapp') return openApp(findReq(id), b.dataset.p);
+      if (a === 'del') {
+        if (!confirm('حذف الطلب ' + id + ' من القائمة؟ (ينتقل لورقة «المحذوفات» في الجدول، والملفات تبقى في درايف)')) return;
+        return call(b, 'adminDeleteRequest', id).then(function () {
+          D.requests = D.requests.filter(function (x) { return x.id !== id; });
+          D.stats = {}; D.requests.forEach(function (x) { D.stats[x.status] = (D.stats[x.status] || 0) + 1; });
+          TH.toast('حُذف الطلب'); render();
+        });
       }
       if (a === 'share') return shareItem(b, QITEMS[b.dataset.q]);
       if (a === 'qcopy') return copyText(QITEMS[b.dataset.q].caption);
