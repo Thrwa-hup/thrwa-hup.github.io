@@ -618,10 +618,11 @@
       if (k === 'tiktok') files = files.filter(function (f) { return /^video\//.test(f.mime); });
       return { files: files, text: c.text || r.text };
     }
+    // روابط رسمية تفتح التطبيق في الجوال (وموقعه في الكمبيوتر)
     var APPLINK = {
-      whatsapp: function (t, mob) { return mob ? 'whatsapp://send?text=' + encodeURIComponent(t) : 'https://web.whatsapp.com/'; },
-      snapchat: function (t, mob) { return mob ? 'snapchat://' : 'https://web.snapchat.com/'; },
-      tiktok: function (t, mob) { return mob ? 'snssdk1233://' : 'https://www.tiktok.com/tiktokstudio/upload'; },
+      whatsapp: function (t) { return 'https://wa.me/?text=' + encodeURIComponent(t); },
+      snapchat: function (t, mob) { return mob ? 'https://www.snapchat.com/' : 'https://web.snapchat.com/'; },
+      tiktok: function (t, mob) { return mob ? 'https://www.tiktok.com/' : 'https://www.tiktok.com/tiktokstudio/upload'; },
       linkedin: function (t) { return 'https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(t); }
     };
     function copySync(t) {
@@ -655,6 +656,7 @@
       m.querySelector('[data-x=close]').onclick = function () { m.remove(); };
       m.querySelector('[data-x=done]').onclick = function () { var b = this; call(b, 'adminMarkManual', r.id, k, '').then(function (nr) { m.remove(); TH.toast('سُجّل منشور في ' + name); replaceReq(nr); }); };
       var pb = m.querySelector('[data-x=prep]');
+      if (pb) setTimeout(function () { pb.click(); }, 50); // يبدأ التجهيز تلقائيًا
       if (pb) pb.onclick = function () {
         if (prepared) {
           copySync(v.text);
@@ -668,7 +670,7 @@
         lab(0);
         var ch = Promise.resolve();
         v.files.forEach(function (f) { ch = ch.then(function () { return fetchFile(f, lab).then(function (x) { out.push(x); i++; }); }); });
-        ch.then(function () { prepared = out; pb.disabled = false; pb.innerHTML = I('share') + 'شارك الحين'; pb.classList.add('accent'); })
+        ch.then(function () { prepared = out; pb.disabled = false; pb.innerHTML = I('share') + 'جاهز — اضغط وشارك لـ ' + E(name); pb.classList.add('accent'); })
           .catch(function (e) { pb.disabled = false; pb.innerHTML = I('share') + 'حاول مرة ثانية'; TH.toast(e.message, true); });
       };
     }
