@@ -277,12 +277,13 @@
         <input class="in" id="d_title" placeholder="مثال: حفل ختام برنامج بسام">
         <label class="f">وش تبي في التصميم؟ <span class="req">*</span></label>
         <textarea class="in" id="d_details" placeholder="الفكرة، والنصوص اللي تنكتب (التاريخ، المكان، الرابط…)، وأي ملاحظة."></textarea>
-        <div id="d_sizesBox" class="hidden"><label class="f">المقاسات والكميات</label>
-        <input class="in" id="d_sizes" placeholder="مثال: مكعبات 50×50 عدد 4، شهادات A4 عدد 40"></div>
+        <div id="d_sizesBox" class="hidden"><label class="f">المقاسات والكميات <span class="muted small">(تنكتب تلقائي وتقدر تعدّلها)</span></label>
+        <textarea class="in" id="d_sizes" style="min-height:90px"></textarea></div>
         <div class="row2">
           <div><label class="f">متى تحتاجه؟ <span class="req">*</span></label><input class="in ltr" id="d_due" type="date"></div>
           <div><label class="f">الأولوية</label><select class="in" id="d_priority"><option value="normal">عادي</option><option value="urgent">مستعجل</option></select></div>
         </div>
+        <div class="note or hidden" id="d_aiNote" style="margin-top:10px"><div><b>تنبيه:</b> التصاميم المستعجلة تُنفَّذ بالذكاء الاصطناعي، وقد تختلف عن التصميم اليدوي.</div></div>
         <div class="hint">يفضّل قبل الموعد بأسبوع على الأقل.</div>
         <label class="f">الشعارات</label>
         <div class="chips2" id="d_logos">
@@ -830,13 +831,38 @@
           return '<label><input type="checkbox" value="' + TH.esc(it) + '"> ' + TH.esc(it) + '</label>';
         }).join('') + '</div>';
       }).join('');
-      document.getElementById('d_types').addEventListener('change', function () {
-        var pr = Array.prototype.some.call(document.querySelectorAll('#d_types input:checked'), function (i) { return DTYPES[0].items.indexOf(i.value) < 0; });
-        document.getElementById('d_sizesBox').classList.toggle('hidden', !pr);
+      document.getElementById('d_types').addEventListener('change', syncSizes);
+      document.getElementById('d_priority').addEventListener('change', function () {
+        document.getElementById('d_aiNote').classList.toggle('hidden', this.value !== 'urgent');
       });
       var ent = document.getElementById('d_entity');
       ent.addEventListener('change', function () { document.getElementById('d_entity2').classList.toggle('hidden', ent.value !== '__other'); });
     })();
+    var DSIZE = {
+      'بوست إنستغرام': '1080×1350 بكسل (طولي 4:5)', 'ستوري إنستغرام': '1080×1920 بكسل', 'سناب شات': '1080×1920 بكسل',
+      'غلاف ريلز / تيك توك': '1080×1920 بكسل', 'بوست X': '1600×900 بكسل', 'بوست لينكدإن': '1200×1200 بكسل',
+      'حالة أو بطاقة واتساب': '1080×1920 بكسل', 'صورة مصغّرة يوتيوب': '1280×720 بكسل', 'موشن جرافيك / فيديو قصير': '1080×1920 بكسل — المدة: 15 إلى 30 ثانية',
+      'عرض تقديمي': '1920×1080 (16:9) — عدد الشرائح: ', 'إعلان رقمي / بانر موقع': '1920×600 بكسل',
+      'مكعبات': '50×50×50 سم — العدد: 4', 'بنر خارجي (فلكس)': '300×100 سم — العدد: 1', 'ستاند / بوب أب': '300×230 سم — العدد: 1',
+      'بوستر': 'A3 (29.7×42 سم) — العدد: ', 'مطوية / بروشور': 'A4 بثلاث طيات — العدد: ', 'كتيّب أو تقرير': 'A5 — عدد الصفحات:  — العدد: ',
+      'شهادات شكر أو حضور': 'A4 أفقي — العدد: ', 'دعوات': 'A5 (15×21 سم) — العدد: ', 'ستيكرات وملصقات': '7×7 سم — العدد: ',
+      'إطار تصوير (فوتو بوث)': '100×70 سم — العدد: 1', 'دروع وتكريم': '20×25 سم — العدد: ',
+      'تيشيرتات / زي موحد': 'شعار الصدر 10 سم وخلف 28 سم — المقاسات (S/M/L/XL) والعدد: ', 'كابات': 'شعار أمامي 8×5 سم — العدد: ',
+      'أكواب': 'طباعة التفاف 20×9 سم — العدد: ', 'دفاتر وأقلام': 'دفتر A5 — العدد: ', 'شنط وهدايا دعائية': 'شنطة قماش 35×40 سم — العدد: '
+    };
+    function syncSizes() {
+      var sel = Array.prototype.map.call(document.querySelectorAll('#d_types input:checked'), function (i) { return i.value; });
+      var ta = document.getElementById('d_sizes'), all = Object.keys(DSIZE);
+      var lines = ta.value.split('\n').filter(function (l) {
+        var t = l.split(':')[0].trim();
+        return l.trim() && (all.indexOf(t) < 0 || sel.indexOf(t) > -1);
+      });
+      sel.forEach(function (t) {
+        if (!lines.some(function (l) { return l.split(':')[0].trim() === t; })) lines.push(t + ': ' + (DSIZE[t] || ''));
+      });
+      ta.value = lines.join('\n');
+      document.getElementById('d_sizesBox').classList.toggle('hidden', !sel.length);
+    }
     function fillEntities(programs) {
       var ent = document.getElementById('d_entity'); if (ent.options.length > 1) return;
       ent.innerHTML = '<option value="">— اختر —</option>' + (programs || []).map(function (x) { return '<option>' + TH.esc(x) + '</option>'; }).join('') + '<option value="__other">جهة أخرى…</option>';

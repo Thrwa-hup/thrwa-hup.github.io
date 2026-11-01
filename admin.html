@@ -652,9 +652,32 @@
         '<label class="f">ملاحظات الفريق</label><textarea class="in" data-dnote="' + E(r.id) + '" style="min-height:70px">' + E(r.notes || '') + '</textarea>' +
         '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
           '<button class="btn sm primary" data-dact="save" data-id="' + E(r.id) + '">' + I('check') + 'حفظ</button>' +
+          '<button class="btn sm" style="background:var(--or);color:var(--navy)" data-dact="ai" data-id="' + E(r.id) + '">' + I('edit') + 'صمّمه بالذكاء الاصطناعي</button>' +
           (r.result ? '<a class="btn sm" href="' + E(r.result) + '" target="_blank" rel="noopener">' + I('link') + 'فتح التصميم</a>' : '') +
           (r.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-dact="archive" data-id="' + E(r.id) + '">' + I('archive') + 'أرشفة</button>' : '') +
           '<button class="btn sm ghost" style="color:var(--bad)" data-dact="del" data-id="' + E(r.id) + '">' + I('trash') + 'حذف</button></div></div></div>';
+    }
+
+    function aiPrompt(r) {
+      var ref = (r.files || []).map(function (f) { return '- ' + (f.name || 'ملف') + ': ' + viewUrl(f.id); }).join('\n');
+      var past = (D.designs || []).filter(function (x) { return x.result && x.id !== r.id; }).slice(0, 6)
+        .map(function (x) { return '- ' + x.title + ' (' + x.types + '): ' + x.result; }).join('\n');
+      return ['صمّم لي تصميم لجمعية ثروة الشبابية (Tharwa Youth) حسب الطلب التالي:',
+        '', 'رقم الطلب: ' + r.id, 'العنوان: ' + r.title, 'الجهة: ' + r.entity, 'نوع التصميم: ' + r.types,
+        'المقاسات والكميات:\n' + (r.sizes || '—'), 'التفاصيل والنصوص:\n' + (r.details || '—'), 'الشعارات: ' + (r.logos || 'شعار ثروة'),
+        'موعد التسليم: ' + dDate(r.due) + (r.priority === 'مستعجل' ? ' (مستعجل)' : ''),
+        ref ? '\nمرفقات صاحب الطلب:\n' + ref : '', past ? '\nتصاميم سابقة من أرشيفنا للاستلهام والحفاظ على نفس الأسلوب:\n' + past : '',
+        '', 'الهوية: الكحلي #292F69 والفيروزي #48B9CB والبرتقالي #F09520، خلفيات فاتحة #F5F6FB، خط عربي واضح، النجمة الرباعية وعناصر الدوائر من هوية ثروة، والوسم #ثروة_الشبابية.',
+        'سوّ التصميم بالمقاس المطلوب لكل نوع، وخلّه جاهز للتحميل كصورة PNG (وPDF للمطبوعات).'].filter(function (x) { return x !== ''; }).join('\n');
+    }
+    function aiDesign(r) {
+      if (!r) return;
+      var p = aiPrompt(r);
+      copySync(p);
+      var url = 'https://claude.ai/new?q=' + encodeURIComponent(p.slice(0, 6000));
+      window.open(url, '_blank', 'noopener');
+      TH.toast('فتحت لك Claude والطلب مكتوب. إذا ما انكتب، الصقه (النص منسوخ).');
+      if (r.status === 'جديد') TH.run('adminDesignUpdate', KEY, r.id, 'قيد التصميم', null, null).then(replaceDes, function () {});
     }
     function replaceDes(r) {
       if (!r) return;
@@ -665,6 +688,7 @@
     function desAct(b) {
       var id = b.dataset.id, a = b.dataset.dact;
       var st = document.querySelector('[data-dst="' + id + '"]'), nt = document.querySelector('[data-dnote="' + id + '"]'), rs = document.querySelector('[data-dres="' + id + '"]');
+      if (a === 'ai') return aiDesign(findDes(id));
       if (a === 'save') call(b, 'adminDesignUpdate', id, st.value, nt.value, rs.value).then(function (r) { TH.toast('تم الحفظ'); replaceDes(r); });
       if (a === 'archive') call(b, 'adminDesignUpdate', id, 'مؤرشف', nt.value, rs.value).then(function (r) { TH.toast('أُرشف الطلب'); replaceDes(r); });
       if (a === 'del') {
