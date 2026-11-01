@@ -481,7 +481,7 @@
     if (!KEY) { document.body.innerHTML = '<p style="font-family:sans-serif;text-align:center;padding:40px">الرابط غير صحيح.</p>'; throw new Error('no key'); }
     var D = null, TAB = 'requests', FILTER = 'active', Q = '';
     var ST_CLS = { 'مقبول': '', 'يحتاج مراجعة': 'warn', 'مرفوض': 'bad', 'قيد النشر': 'navy', 'منشور': 'ok', 'بانتظار نشر يدوي': 'or', 'فشل النشر': 'bad', 'مؤرشف': 'gray' };
-    var PN = { instagram: 'إنستغرام', tiktok: 'تيك توك', x: 'X', youtube: 'يوتيوب', linkedin: 'لينكدين', snapchat: 'سناب', whatsapp: 'واتساب' };
+    var PN = { instagram: 'إنستغرام', tiktok: 'تيك توك', x: 'X', youtube: 'يوتيوب', linkedin: 'لينكدين', snapchat: 'سناب', whatsapp: 'واتساب', website: 'الموقع', store: 'المتجر' };
     var I = TH.icon, E = TH.esc;
 
     function heroHtml() {
@@ -499,7 +499,7 @@
       if (!D) { try { var c = JSON.parse(localStorage.getItem(CK) || 'null'); if (c && c.k === KEY.slice(0, 6)) { D = c.d; render(); TH.toast('جارٍ تحديث البيانات…'); } } catch (e) { /* بدون كاش */ } }
       LAST_LOAD = Date.now();
       return TH.run('adminData', KEY).then(function (d) {
-        D = d; render();
+        checkNew(d); D = d; render();
         try { localStorage.setItem(CK, JSON.stringify({ k: KEY.slice(0, 6), d: d })); } catch (e) { /* المساحة ممتلئة */ }
       }).catch(function (e) {
         if (D) return TH.toast('تعذر التحديث: ' + e.message, true);
@@ -701,7 +701,7 @@
 
     // ===================== النشر اليدوي + «افتح في التطبيق» =====================
     var QITEMS = [], PREP = {};
-    var PAPP = { whatsapp: ['واتساب', 'https://web.whatsapp.com/'], snapchat: ['سناب شات', 'https://web.snapchat.com/'], linkedin: ['لينكدين', 'https://www.linkedin.com/feed/'], tiktok: ['تيك توك', 'https://www.tiktok.com/tiktokstudio/upload'] };
+    var PAPP = { whatsapp: ['واتساب', 'https://web.whatsapp.com/'], snapchat: ['سناب شات', 'https://web.snapchat.com/'], linkedin: ['لينكدين', 'https://www.linkedin.com/feed/'], website: ['الموقع الإلكتروني', 'https://tharwa.org.sa/'], store: ['المتجر', 'https://tharwa.org.sa/'], tiktok: ['تيك توك', 'https://www.tiktok.com/tiktokstudio/upload'] };
     function qBtns(x, idx) {
       var dl = (x.files || []).map(function (f, i) { return '<a class="btn sm ghost" href="https://drive.google.com/uc?export=download&id=' + E(f.id) + '" target="_blank" rel="noopener">' + I('download') + (f.video ? 'المقطع' : 'الصورة') + (x.files.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join('');
       return '<div class="actions" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' +
@@ -725,7 +725,7 @@
             groups[k].map(function (x) { QITEMS.push(x); return qItem(x, QITEMS.length - 1); }).join('');
         }).join('') + '</div>';
     }
-    function isManualPlat(k) { return ['whatsapp', 'snapchat', 'linkedin'].indexOf(k) > -1 || (k === 'tiktok' && !D.ttAudited); }
+    function isManualPlat(k) { return ['whatsapp', 'snapchat', 'linkedin', 'website', 'store'].indexOf(k) > -1 || (k === 'tiktok' && !D.ttAudited); }
     function platView(r, k) {
       var c = (r.custom || {})[k] || {};
       var files = (c.files && c.files.length ? r.files.filter(function (f) { return c.files.indexOf(f.id) > -1; }) : r.files).filter(function (f) { return /^(image|video)\//.test(f.mime); });
@@ -737,7 +737,9 @@
       whatsapp: function (t) { return 'https://wa.me/?text=' + encodeURIComponent(t); },
       snapchat: function (t, mob) { return mob ? 'https://www.snapchat.com/' : 'https://web.snapchat.com/'; },
       tiktok: function (t, mob) { return mob ? 'https://www.tiktok.com/' : 'https://www.tiktok.com/tiktokstudio/upload'; },
-      linkedin: function (t) { return 'https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(t); }
+      linkedin: function (t) { return 'https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(t); },
+      website: function () { return 'https://tharwa.org.sa/'; },
+      store: function () { return 'https://tharwa.org.sa/'; }
     };
     function copySync(t) {
       var ok = false, ta = document.createElement('textarea');
@@ -1156,7 +1158,7 @@
           fld('waTpl', 'اسم القالب المعتمد', p.template, 'tharwa_post') + fld('waLang', 'لغة القالب', p.lang, 'ar') + '</div>' +
           '<div class="actions"><button class="btn sm primary" data-pa="wa" data-k="whatsapp">' + I('plug') + 'حفظ واختبار</button>' + (p.connected ? '<a class="btn sm ghost" href="' + D.links.sheet + '" target="_blank" rel="noopener">' + I('list') + 'قائمة الأرقام</a><button class="btn sm bad" data-pa="off" data-k="whatsapp">' + I('x') + 'فصل</button>' : '') + '</div>';
       } else {
-        h += '<p class="muted small" style="margin:0">' + (p.key === 'linkedin' ? 'النشر الآلي في لينكدين لصفحات الجهات يحتاج موافقة LinkedIn على برنامج الشركاء، فيبقى يدويًا حاليًا.' : 'سناب شات ما عنده طريقة نشر رسمية مفتوحة، فيبقى يدويًا.') +
+        h += '<p class="muted small" style="margin:0">' + (p.key === 'website' || p.key === 'store' ? 'النشر في ' + E(p.name) + ' يدوي من لوحة تحكم الموقع: تنسخ النص وتحمّل الصور من «جهّز وافتح».' : p.key === 'linkedin' ? 'النشر الآلي في لينكدين لصفحات الجهات يحتاج موافقة LinkedIn على برنامج الشركاء، فيبقى يدويًا حاليًا.' : 'سناب شات ما عنده طريقة نشر رسمية مفتوحة، فيبقى يدويًا.') +
           ' الطلبات تظهر «بانتظار نشر يدوي» ويوصلك إيميل، وبعد النشر تضغط «تم النشر».</p>';
       }
       if (g) h += '<details class="apv"><summary>خطوات الإعداد (مرة واحدة)</summary><ol class="steps">' + g.setup.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol></details>' +
@@ -1322,6 +1324,85 @@
     }
 
     // ===================== الروابط والإعدادات =====================
+
+    // ===================== التنبيهات: صوت + إشعار + تيليجرام =====================
+    var SEEN = null, ACTX = null, ALERT_ON = false;
+    try { ALERT_ON = localStorage.getItem('th_alert') === '1'; } catch (e) { /* لا شيء */ }
+    function ids(d) { return (d.requests || []).map(function (r) { return r.id; }).concat((d.designs || []).map(function (r) { return r.id; })); }
+    function beep() {
+      try {
+        ACTX = ACTX || new (window.AudioContext || window.webkitAudioContext)();
+        if (ACTX.state === 'suspended') ACTX.resume();
+        [0, 0.18, 0.36].forEach(function (t, i) {
+          var o = ACTX.createOscillator(), g = ACTX.createGain();
+          o.type = 'sine'; o.frequency.value = [880, 1175, 1568][i];
+          g.gain.setValueAtTime(0.0001, ACTX.currentTime + t); g.gain.exponentialRampToValueAtTime(0.35, ACTX.currentTime + t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, ACTX.currentTime + t + 0.16);
+          o.connect(g); g.connect(ACTX.destination); o.start(ACTX.currentTime + t); o.stop(ACTX.currentTime + t + 0.18);
+        });
+      } catch (e) { /* الصوت غير متاح */ }
+    }
+    function checkNew(d) {
+      var now = ids(d);
+      if (SEEN) {
+        var fresh = now.filter(function (id) { return SEEN.indexOf(id) < 0; });
+        if (fresh.length) {
+          var des = fresh.filter(function (id) { return /^DS-/.test(id); }).length, pub = fresh.length - des;
+          var msg = (pub ? pub + ' طلب نشر جديد' : '') + (pub && des ? ' و' : '') + (des ? des + ' طلب تصميم جديد' : '');
+          TH.toast('🔔 ' + msg);
+          if (ALERT_ON) {
+            beep();
+            try { if (window.Notification && Notification.permission === 'granted') new Notification('منصة ثروة', { body: msg, icon: 'icon.png', tag: 'th-new' }); } catch (e) { /* لا شيء */ }
+          }
+          document.title = '(' + fresh.length + ') لوحة التحكم';
+        }
+      }
+      SEEN = now;
+    }
+    // المتصفح ما يسمح بالصوت إلا بعد أول لمسة في الصفحة
+    document.addEventListener('pointerdown', function () { if (!ALERT_ON) return; try { ACTX = ACTX || new (window.AudioContext || window.webkitAudioContext)(); if (ACTX.state === 'suspended') ACTX.resume(); } catch (e) { /* لا شيء */ } }, { passive: true });
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) document.title = 'لوحة تحكم النشر — ثروة الشبابية'; });
+    setInterval(function () { if (D) load(true); }, 60000);
+    function alertCard() {
+      return '<div class="pcard"><h3>' + I('clock') + ' تنبيه الموقع بالصوت</h3><p class="muted small" style="margin-top:0">لما توصل طلبات جديدة واللوحة مفتوحة، يطلع إشعار مع صوت (يفحص كل دقيقة).</p>' +
+        '<div class="actions"><button class="btn sm ' + (ALERT_ON ? 'ok' : 'primary') + '" id="alertOn">' + I(ALERT_ON ? 'check' : 'send') + (ALERT_ON ? 'التنبيه مفعّل' : 'فعّل التنبيه بالصوت') + '</button>' +
+        (ALERT_ON ? '<button class="btn sm ghost" id="alertTest">جرّب الصوت</button><button class="btn sm ghost" id="alertOff">إيقاف</button>' : '') + '</div>' +
+        '<div class="hint">يشتغل وهذي الصفحة مفتوحة (ولو بتبويب ثاني). إذا قفلتها، تيليجرام يوصلك التنبيه.</div></div>';
+    }
+    function tgCard() {
+      var t = D.telegram || {};
+      return '<div class="pcard"><h3>' + I('send') + ' تنبيهات تيليجرام</h3>' +
+        (t.linked && t.chats ? '<div class="note ok" style="margin-bottom:10px">' + I('check') + '<div>مربوط — يوصل التنبيه لـ ' + t.chats + ' حساب.</div></div>' : '') +
+        '<ol class="steps" style="padding-right:18px;margin-top:0"><li>افتح <a href="https://t.me/BotFather" target="_blank" rel="noopener">BotFather</a> في تيليجرام، وأرسل <b>/newbot</b>، واختر اسم ومعرّف للبوت.</li>' +
+        '<li>انسخ الرمز اللي يعطيك والصقه هنا.</li><li>افتح البوت الجديد واضغط <b>Start</b>.</li><li>اضغط «ربط».</li></ol>' +
+        '<input class="in ltr" id="tgTok" placeholder="' + (t.linked ? 'البوت محفوظ — الصق رمز جديد فقط لو تبي تغيّره' : '123456789:AA…') + '" autocomplete="off">' +
+        '<div class="actions" style="margin-top:8px"><button class="btn sm primary" id="tgLink">' + I('plug') + (t.linked ? 'ربط حساب إضافي / إعادة الفحص' : 'ربط') + '</button>' +
+        (t.linked ? '<button class="btn sm ghost" id="tgReset">فك الربط</button>' : '') + '</div>' +
+        '<div class="hint">تبي زملاءك يوصلهم التنبيه؟ كل واحد يفتح البوت ويضغط Start، وبعدها اضغط «ربط حساب إضافي».</div></div>';
+    }
+    function bindAlerts() {
+      var on = document.getElementById('alertOn'), off = document.getElementById('alertOff'), test = document.getElementById('alertTest');
+      if (on) on.onclick = function () {
+        ALERT_ON = true; try { localStorage.setItem('th_alert', '1'); } catch (e) { /* لا شيء */ }
+        beep();
+        if (window.Notification && Notification.permission === 'default') Notification.requestPermission();
+        renderSettings(); TH.toast('تفعّل التنبيه بالصوت');
+      };
+      if (off) off.onclick = function () { ALERT_ON = false; try { localStorage.removeItem('th_alert'); } catch (e) { /* لا شيء */ } renderSettings(); };
+      if (test) test.onclick = beep;
+      var lk = document.getElementById('tgLink'), rs = document.getElementById('tgReset');
+      if (lk) lk.onclick = function () {
+        call(lk, 'adminTelegramSetup', document.getElementById('tgTok').value).then(function (r) {
+          D.telegram = { linked: true, chats: r.chats };
+          if (r.hint) TH.toast(r.hint, true); else TH.toast('تم الربط ✅ وصلتك رسالة تجربة في تيليجرام');
+          renderSettings();
+        });
+      };
+      if (rs) rs.onclick = function () {
+        if (!confirm('فك ربط بوت تيليجرام؟')) return;
+        call(rs, 'adminTelegramReset').then(function () { D.telegram = { linked: false, chats: 0 }; renderSettings(); });
+      };
+    }
+
     function renderSettings() {
       var L = D.links;
       function lnk(label, url, warn) {
@@ -1333,10 +1414,12 @@
         lnk('قاعدة البيانات (Google Sheet)', L.sheet) + lnk('مجلد المنصة في درايف', L.folder) + '</div>' +
         '<div class="pcard"><h3>ملفات لوائح النشر (PDF)</h3><p class="muted small" style="margin-top:0">تظهر هذه الملفات أعلى صفحة طلبات النشر. ارفع النسخة المعتمدة متى ما تحدّثت.</p><div id="polList">' + polHtml(D.policyFiles) + '</div>' +
         '<div class="actions"><label class="btn primary sm">' + I('upload') + 'رفع ملف PDF<input type="file" id="polUp" accept="application/pdf,.pdf" hidden></label></div><div class="bar hidden" id="polBar" style="margin-top:10px"><i></i></div></div>' +
+        tgCard() + alertCard() +
         '<div class="pcard"><h3>دورة النشر الآلي</h3><ul class="steps" style="padding-right:18px"><li>تعمل كل 3 ساعات على خوادم Google، حتى لو كل الأجهزة مطفية.</li><li>تنشر الطلبات <b>المعتمدة</b> التي حان موعدها فقط.</li>' +
         '<li>الطلب «المقبول» آليًا ينتظر موعده وينشر مباشرة بدون تدخل منك. لو تبي تعتمد كل طلب بنفسك، غيّر «طريقة النشر» من تبويب «المنصات المرتبطة».</li><li>آخر دورة: ' + E(D.lastRun ? TH.date(D.lastRun) : '—') + '</li></ul>' +
         '<div class="actions"><button class="btn accent" id="runNow2">' + I('refresh') + 'شغّل دورة النشر الآن</button></div></div></div>';
       document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function () { TH.copy(b.dataset.copy); }; });
+      bindAlerts();
       document.getElementById('runNow2').onclick = runNow;
       bindPol();
       document.getElementById('polUp').onchange = function () {
