@@ -85,6 +85,7 @@
   .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500; padding: 2px 11px; border-radius: 99px; background: var(--tq-soft); color: var(--navy); white-space: nowrap; }
   .badge.ok { background: var(--ok-soft); color: #1d6b47; }
   .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .badge.tq { background: var(--tq-soft); color: var(--navy); }
   .badge.bad { background: var(--bad-soft); color: var(--bad); }
   .badge.navy { background: var(--navy); color: #fff; }
   .badge.or { background: var(--or-soft); color: #8a4f00; }
@@ -510,30 +511,33 @@
       document.getElementById('hero').innerHTML = heroHtml();
       document.getElementById('runNow').onclick = runNow;
       var s = D.stats || {}, open = D.issues.filter(function (i) { return i.state !== 'محلولة'; }).length;
+      D.designs = D.designs || [];
+      var desNew = D.designs.filter(function (x) { return x.status === 'جديد'; }).length;
       var tiles = [
         ['يحتاج مراجعة', s['يحتاج مراجعة'] || 0, 'or', 'يحتاج مراجعة'],
         ['معتمد بانتظار موعده', s['مقبول'] || 0, 'tq', 'مقبول'],
         ['بانتظار نشر يدوي', s['بانتظار نشر يدوي'] || 0, 'or', 'بانتظار نشر يدوي'],
         ['فشل النشر', s['فشل النشر'] || 0, 'bad', 'فشل النشر'],
         ['منشور', s['منشور'] || 0, 'ok', 'منشور'],
-        ['مشاكل مفتوحة', open, open ? 'bad' : 'ok', '#issues']
+        ['مشاكل مفتوحة', open, open ? 'bad' : 'ok', '#issues'],
+        ['طلبات تصميم جديدة', desNew, desNew ? 'or' : 'ok', '#designs']
       ];
       document.getElementById('stats').innerHTML = tiles.map(function (t) {
         return '<div class="stat ' + t[2] + '" data-go="' + t[3] + '"><b>' + t[1] + '</b><span>' + t[0] + '</span></div>';
       }).join('');
       document.querySelectorAll('.stat').forEach(function (el) {
-        el.onclick = function () { var g = el.dataset.go; if (g === '#issues') setTab('issues'); else { FILTER = g; setTab('requests'); } };
+        el.onclick = function () { var g = el.dataset.go; if (g === '#issues') setTab('issues'); else if (g === '#designs') setTab('designs'); else { FILTER = g; setTab('requests'); } };
       });
-      var tabs = [['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['platforms', 'plug', 'المنصات المرتبطة'], ['issues', 'alert', 'المشاكل', open],
+      var tabs = [['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['designs', 'edit', 'طلبات التصاميم', desNew], ['platforms', 'plug', 'المنصات المرتبطة'], ['issues', 'alert', 'المشاكل', open],
         ['media', 'film', 'مكتبة المقاطع', D.media.length], ['archive', 'archive', 'الأرشيف'], ['guide', 'book', 'دليل نشر إنستغرام'], ['settings', 'gear', 'الروابط والإعدادات']];
       document.getElementById('tabs').innerHTML = tabs.map(function (t) {
         return '<button data-t="' + t[0] + '" class="' + (TAB === t[0] ? 'on' : '') + '">' + I(t[1]) + t[2] + (t[3] ? ' <span class="cnt">' + t[3] + '</span>' : '') + '</button>';
       }).join('');
       document.querySelectorAll('#tabs button').forEach(function (b) { b.onclick = function () { setTab(b.dataset.t); }; });
       document.getElementById('panes').innerHTML =
-        '<section class="pane" id="p-requests"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
+        '<section class="pane" id="p-requests"></section><section class="pane" id="p-designs"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
         '<section class="pane" id="p-media"></section><section class="pane" id="p-archive"></section><section class="pane guide" id="p-guide"></section><section class="pane" id="p-settings"></section>';
-      renderRequests(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
+      renderRequests(); renderDesigns(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
       setTab(TAB, true);
     }
     function setTab(t, noScroll) {
@@ -541,6 +545,7 @@
       document.querySelectorAll('#tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === t); });
       document.querySelectorAll('.pane').forEach(function (p) { p.classList.toggle('on', p.id === 'p-' + t); });
       if (t === 'requests') renderRequests();
+      if (t === 'designs') renderDesigns();
       if (!noScroll) document.getElementById('tabs').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -585,6 +590,89 @@
       var q = document.getElementById('q');
       q.oninput = function () { Q = q.value; clearTimeout(q._t); q._t = setTimeout(function () { renderRequests(); var n = document.getElementById('q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); };
       el.querySelectorAll('[data-act]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); act(b); }; });
+    }
+
+
+    // ===================== طلبات التصاميم =====================
+    var DFILTER = 'active', DQ = '';
+    var DST_CLS = { 'جديد': 'or', 'قيد التصميم': 'tq', 'بانتظار ملاحظات صاحب الطلب': 'warn', 'مكتمل': 'ok', 'مرفوض': 'bad', 'مؤرشف': 'gray' };
+    function dDate(iso) { if (!iso) return '—'; return new Date(iso).toLocaleDateString('ar-SA-u-ca-gregory', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }); }
+    function daysLeft(iso) { if (!iso) return null; return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000); }
+    function findDes(id) { return (D.designs || []).filter(function (x) { return x.id === id; })[0]; }
+    function renderDesigns() {
+      var el = document.getElementById('p-designs'); if (!el || !D) return;
+      var sts = D.designStatuses || ['جديد', 'قيد التصميم', 'بانتظار ملاحظات صاحب الطلب', 'مكتمل', 'مرفوض', 'مؤرشف'];
+      var filters = [['active', 'النشطة']].concat(sts.map(function (x) { return [x, x === 'بانتظار ملاحظات صاحب الطلب' ? 'بانتظار ملاحظات' : x]; })).concat([['all', 'الكل']]);
+      var list = (D.designs || []).filter(function (r) {
+        if (DFILTER === 'active' && (r.status === 'مكتمل' || r.status === 'مرفوض' || r.status === 'مؤرشف')) return false;
+        if (DFILTER !== 'active' && DFILTER !== 'all' && r.status !== DFILTER) return false;
+        if (DQ) { var h = (r.id + ' ' + r.name + ' ' + r.phone + ' ' + r.entity + ' ' + r.title + ' ' + r.types).toLowerCase(); if (h.indexOf(DQ.toLowerCase()) < 0) return false; }
+        return true;
+      });
+      if (DFILTER === 'active') list.sort(function (a, b) { return String(a.due).localeCompare(String(b.due)); });
+      el.innerHTML = '<div class="toolbar">' + filters.map(function (f) { return '<button class="chip' + (DFILTER === f[0] ? ' on' : '') + '" data-df="' + E(f[0]) + '">' + E(f[1]) + '</button>'; }).join('') +
+        '<div class="search">' + I('search') + '<input class="in" id="dq" placeholder="بحث بالاسم أو الرقم أو الجهة" value="' + E(DQ) + '"></div></div>' +
+        (list.length ? list.map(desCard).join('') : '<div class="empty">' + I('edit') + '<p>لا توجد طلبات تصميم هنا.</p><p class="small">يقدّمها الفريق من نفس رابط صفحة الطلبات باختيار «طلب تصميم».</p></div>');
+      el.querySelectorAll('[data-df]').forEach(function (c) { c.onclick = function () { DFILTER = c.dataset.df; renderDesigns(); }; });
+      var q = document.getElementById('dq');
+      q.oninput = function () { DQ = q.value; clearTimeout(q._t); q._t = setTimeout(function () { renderDesigns(); var n = document.getElementById('dq'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 350); };
+      el.querySelectorAll('[data-dact]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); desAct(b); }; });
+    }
+    function desCard(r) {
+      var img = (r.files || []).filter(function (f) { return /^image\//.test(f.mime); })[0];
+      var pv = img ? ' style="background-image:url(' + thumbUrl(img.id, 200) + ')"' : '';
+      var dl = daysLeft(r.due), done = r.status === 'مكتمل' || r.status === 'مرفوض' || r.status === 'مؤرشف';
+      var dueCls = done ? 'gray' : dl == null ? 'gray' : dl < 0 ? 'bad' : dl <= 3 ? 'or' : 'tq';
+      var dueTxt = done || dl == null ? '' : dl < 0 ? ' (متأخر ' + (-dl) + ' يوم)' : dl === 0 ? ' (اليوم)' : ' (باقي ' + dl + ' يوم)';
+      var types = String(r.types || '').split('، ').filter(Boolean);
+      return '<details class="req" data-did="' + E(r.id) + '"' + (r._open ? ' open' : '') + ' ontoggle="dtoggled(this)"><summary><div class="pv"' + pv + '>' + (img ? '' : I('edit')) + '</div>' +
+        '<div><h3><span class="id">' + E(r.id) + '</span>' + E(r.title) + ' <span class="muted small" style="font-weight:400">— ' + E(r.entity) + ' · ' + E(r.name) + '</span></h3>' +
+        '<div class="sub"><span class="badge ' + dueCls + '">' + I('calendar').replace('<svg', '<svg width="12" height="12"') + ' التسليم: ' + E(dDate(r.due)) + E(dueTxt) + '</span>' + (r.priority === 'مستعجل' ? ' <span class="badge bad">مستعجل</span>' : '') + '</div>' +
+        '<div class="pchips">' + types.map(function (t) { return '<span class="pchip">' + E(t) + '</span>'; }).join('') + '</div></div>' +
+        '<div class="side"><span class="badge or">' + I('edit').replace('<svg', '<svg width="12" height="12"') + ' تصميم</span><span class="badge ' + (DST_CLS[r.status] || '') + '">' + E(r.status) + '</span><span class="muted small">وصل ' + E(TH.date(r.created, false)) + '</span></div></summary>' +
+        desBody(r) + '</details>';
+    }
+    window.dtoggled = function (d) { var r = findDes(d.dataset.did); if (r) r._open = d.open; };
+    function desBody(r) {
+      var row = function (k, v) { return v ? '<div style="margin-top:10px"><b class="small muted">' + k + '</b><div style="white-space:pre-wrap">' + E(v) + '</div></div>' : ''; };
+      var phone = String(r.phone || ''), wa = '966' + phone.replace(/\D/g, '').replace(/^0/, '').replace(/^966/, '');
+      var files = (r.files || []).map(function (f) {
+        return '<a class="btn sm ghost" href="' + viewUrl(f.id) + '" target="_blank" rel="noopener">' + I(/^image\//.test(f.mime) ? 'image' : 'pdf') + E(f.name || 'ملف') + '</a>';
+      }).join(' ');
+      var sts = D.designStatuses || [];
+      return '<div class="body" style="padding:4px 16px 16px">' +
+        '<div class="row2"><div>' + row('مقدم الطلب', r.name) + '<div style="margin-top:6px"><a class="btn sm" href="tel:' + E(phone) + '">' + I('phone') + E(phone) + '</a> <a class="btn sm" href="https://wa.me/' + E(wa) + '" target="_blank" rel="noopener">' + I('chat') + 'واتساب</a></div></div>' +
+        '<div>' + row('الجهة', r.entity) + row('تاريخ الطلب', dDate(r.created)) + row('تاريخ الفعالية', r.eventDate ? dDate(r.eventDate) : '') + '</div></div>' +
+        row('أنواع التصميم', r.types) + row('الفكرة والتفاصيل', r.details) + row('النصوص المطلوبة', r.texts) + row('المقاسات والكميات', r.sizes) +
+        '<div class="row2"><div>' + row('الهوية والألوان', r.identity) + row('الشعارات', r.logos) + '</div><div>' + row('الصيغ المطلوبة', r.formats) + row('الأولوية', r.priority) + '</div></div>' +
+        (files ? '<div style="margin-top:10px"><b class="small muted">ملفات مرجعية</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' + files + '</div></div>' : '') +
+        '<div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:12px"><div class="row2"><div><label class="f">الحالة</label><select class="in" data-dst="' + E(r.id) + '">' +
+          sts.map(function (x) { return '<option' + (x === r.status ? ' selected' : '') + '>' + E(x) + '</option>'; }).join('') + '</select></div>' +
+          '<div><label class="f">رابط التصميم النهائي</label><input class="in ltr" data-dres="' + E(r.id) + '" placeholder="https://drive.google.com/…" value="' + E(r.result || '') + '"></div></div>' +
+        '<label class="f">ملاحظات الفريق</label><textarea class="in" data-dnote="' + E(r.id) + '" style="min-height:70px">' + E(r.notes || '') + '</textarea>' +
+        '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
+          '<button class="btn sm primary" data-dact="save" data-id="' + E(r.id) + '">' + I('check') + 'حفظ</button>' +
+          (r.result ? '<a class="btn sm" href="' + E(r.result) + '" target="_blank" rel="noopener">' + I('link') + 'فتح التصميم</a>' : '') +
+          (r.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-dact="archive" data-id="' + E(r.id) + '">' + I('archive') + 'أرشفة</button>' : '') +
+          '<button class="btn sm ghost" style="color:var(--bad)" data-dact="del" data-id="' + E(r.id) + '">' + I('trash') + 'حذف</button></div></div></div>';
+    }
+    function replaceDes(r) {
+      if (!r) return;
+      r._open = true;
+      D.designs = (D.designs || []).map(function (x) { return x.id === r.id ? r : x; });
+      render(); setTab('designs', true);
+    }
+    function desAct(b) {
+      var id = b.dataset.id, a = b.dataset.dact;
+      var st = document.querySelector('[data-dst="' + id + '"]'), nt = document.querySelector('[data-dnote="' + id + '"]'), rs = document.querySelector('[data-dres="' + id + '"]');
+      if (a === 'save') call(b, 'adminDesignUpdate', id, st.value, nt.value, rs.value).then(function (r) { TH.toast('تم الحفظ'); replaceDes(r); });
+      if (a === 'archive') call(b, 'adminDesignUpdate', id, 'مؤرشف', nt.value, rs.value).then(function (r) { TH.toast('أُرشف الطلب'); replaceDes(r); });
+      if (a === 'del') {
+        if (!confirm('حذف طلب التصميم ' + id + '؟ (ينقل لورقة «المحذوفات» في الشيت)')) return;
+        call(b, 'adminDesignDelete', id).then(function () {
+          TH.toast('حُذف الطلب'); D.designs = D.designs.filter(function (x) { return x.id !== id; }); render(); setTab('designs', true);
+        });
+      }
     }
 
     // ===================== النشر اليدوي + «افتح في التطبيق» =====================
@@ -753,7 +841,7 @@
         '<div><h3><span class="id">' + E(r.id) + '</span>' + E(r.program || 'بدون برنامج') + ' <span class="muted small" style="font-weight:400">— ' + E(r.name) + '</span></h3>' +
         '<div class="sub">' + I('calendar').replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' موعد النشر: ' + E(TH.date(r.desired)) + '</div>' +
         '<div class="txt">' + E(r.text) + '</div><div class="pchips">' + chips + '</div></div>' +
-        '<div class="side"><span class="badge ' + (ST_CLS[r.status] || '') + '">' + E(r.status) + '</span><span class="muted small">وصل ' + E(TH.date(r.created, false)) + '</span></div></summary>' +
+        '<div class="side"><span class="badge tq">' + I('send').replace('<svg', '<svg width="12" height="12"') + ' نشر</span><span class="badge ' + (ST_CLS[r.status] || '') + '">' + E(r.status) + '</span><span class="muted small">وصل ' + E(TH.date(r.created, false)) + '</span></div></summary>' +
         reqBody(r) + '</details>';
     }
     window.toggled = function (d) { var r = findReq(d.dataset.id); if (r) r._open = d.open; };

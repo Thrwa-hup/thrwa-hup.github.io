@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>طلبات النشر — ثروة الشبابية</title>
+  <title>طلبات النشر والتصاميم — ثروة الشبابية</title>
   <link rel="icon" type="image/png" href="favicon.png"><link rel="apple-touch-icon" href="icon.png"><meta name="theme-color" content="#202658">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,6 +84,7 @@
   .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500; padding: 2px 11px; border-radius: 99px; background: var(--tq-soft); color: var(--navy); white-space: nowrap; }
   .badge.ok { background: var(--ok-soft); color: #1d6b47; }
   .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .badge.tq { background: var(--tq-soft); color: var(--navy); }
   .badge.bad { background: var(--bad-soft); color: var(--bad); }
   .badge.navy { background: var(--navy); color: #fff; }
   .badge.or { background: var(--or-soft); color: #8a4f00; }
@@ -189,12 +190,36 @@
   .done-list { text-align: right; max-width: 600px; margin: 10px auto 0; }
   .done-item { border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-top: 10px; }
   .done-item .req-no { font-size: 17px; padding: 2px 12px; margin: 0 0 6px; }
+  .kind { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .kind button { font: inherit; text-align: right; display: flex; gap: 12px; align-items: center; padding: 18px 16px; border-radius: 16px; border: 2px solid var(--line); background: #fff; color: var(--navy); cursor: pointer; transition: all .15s; }
+  .kind button .ic { width: 48px; height: 48px; border-radius: 14px; background: var(--tq-soft); display: grid; place-items: center; flex: none; }
+  .kind button .ic svg { width: 26px; height: 26px; }
+  .kind button b { display: block; font-size: 18px; font-weight: 700; }
+  .kind button span { font-size: 13px; color: var(--muted); }
+  .kind button.on { border-color: var(--navy); background: #F4F5FB; box-shadow: 0 0 0 4px rgba(72,185,203,.15); }
+  .kind button.on .ic { background: var(--navy); color: #fff; }
+  @media (max-width: 520px) { .kind { grid-template-columns: 1fr; } }
+  .dtypes h4 { margin: 14px 0 6px; font-size: 15px; color: var(--muted); font-weight: 500; }
+  .dtypes .plats { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .dtypes .plat { padding: 10px 12px; }
+  .chips2 { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips2 label { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; }
+  .chips2 label:has(input:checked) { border-color: var(--navy); background: #F4F5FB; font-weight: 500; }
+  .chips2 input { accent-color: var(--navy); }
 </style>
 </head>
 <body>
   <div id="hero"></div>
 
   <main class="wrap" id="app">
+    <section class="card" id="kindCard">
+      <h2 class="sec-title"><span class="st"></span>وش طلبك؟</h2>
+      <div class="kind">
+        <button type="button" data-k="publish"><span class="ic" id="kIc1"></span><div><b>طلب نشر</b><span>عندك منشور جاهز تبيه ينزل في حسابات ثروة</span></div></button>
+        <button type="button" data-k="design"><span class="ic" id="kIc2"></span><div><b>طلب تصميم</b><span>تحتاج تصميم للمنصات أو مطبوعات أو هدايا</span></div></button>
+      </div>
+    </section>
+    <div id="pubWrap" class="hidden">
     <section class="card" id="policy">
       <h2 class="sec-title"><span id="t-star1"></span>قبل ما تبدأ: لوائح النشر</h2>
       <p class="muted" style="margin-top:0">اقرأ لوائح النشر ودليل مقدّم الطلب. الطلب المخالف للوائح لا يُنشر.</p>
@@ -227,6 +252,80 @@
         <div class="bar hidden" id="bar"><i></i></div>
         <div class="hint hidden" id="barTxt" style="margin:6px 0 12px"></div>
         <button class="btn primary big" id="send" type="submit"><span id="sendIc"></span><span id="sendTxt">إرسال الطلب</span></button>
+      </div>
+    </form>
+    </div>
+
+    <form id="df" class="hidden" novalidate>
+      <section class="card">
+        <h2 class="sec-title"><span class="st"></span>بيانات الطلب</h2>
+        <div class="row2">
+          <div><label class="f">الاسم <span class="req">*</span></label><input class="in" id="d_name" autocomplete="name" placeholder="اسم مقدم الطلب"></div>
+          <div><label class="f">رقم الجوال <span class="req">*</span></label><input class="in" id="d_phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="05XXXXXXXX"></div>
+        </div>
+        <div class="row2">
+          <div><label class="f">الجهة أو البرنامج <span class="req">*</span></label><select class="in" id="d_entity"></select>
+            <input class="in hidden" id="d_entity2" placeholder="اكتب اسم الجهة" style="margin-top:8px"></div>
+          <div><label class="f">تاريخ الطلب</label><input class="in" id="d_today" disabled></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="sec-title"><span class="st"></span>نوع التصميم</h2>
+        <p class="muted small" style="margin-top:0">اختر كل اللي تحتاجه (تقدر تختار أكثر من نوع).</p>
+        <div class="dtypes" id="d_types"></div>
+        <input class="in hidden" id="d_other" placeholder="وش التصميم الآخر؟" style="margin-top:10px">
+      </section>
+
+      <section class="card">
+        <h2 class="sec-title"><span class="st"></span>تفاصيل التصميم</h2>
+        <label class="f">عنوان التصميم أو اسم الفعالية <span class="req">*</span></label>
+        <input class="in" id="d_title" placeholder="مثال: حفل ختام برنامج بسام">
+        <label class="f">الفكرة والتفاصيل <span class="req">*</span></label>
+        <textarea class="in" id="d_details" placeholder="وش الهدف من التصميم؟ لمين موجّه؟ وش الفكرة أو الإحساس اللي تبيه؟ وأي تفاصيل تساعد المصمم."></textarea>
+        <label class="f">النصوص اللي تنكتب في التصميم</label>
+        <textarea class="in" id="d_texts" style="min-height:110px" placeholder="العنوان، التاريخ، الوقت، المكان، رابط التسجيل، أسماء الضيوف… اكتبها بالضبط مثل ما تبيها تطلع."></textarea>
+        <label class="f">المقاسات والكميات <span class="muted small">(للمطبوعات)</span></label>
+        <textarea class="in" id="d_sizes" style="min-height:80px" placeholder="مثال: رول أب 85×200 سم عدد 2، شهادات A4 عدد 40، مكعبات 50×50 عدد 4"></textarea>
+        <div class="row2">
+          <div><label class="f">الهوية والألوان</label>
+            <select class="in" id="d_identity"><option>هوية ثروة الرسمية</option><option>هوية البرنامج</option><option>حسب رأي المصمم</option><option>ألوان محددة (أكتبها في التفاصيل)</option></select></div>
+          <div><label class="f">الأولوية</label>
+            <select class="in" id="d_priority"><option value="normal">عادي</option><option value="urgent">مستعجل</option></select></div>
+        </div>
+        <label class="f">الشعارات المطلوبة</label>
+        <div class="chips2" id="d_logos">
+          <label><input type="checkbox" value="شعار ثروة" checked> شعار ثروة</label>
+          <label><input type="checkbox" value="شعار البرنامج"> شعار البرنامج</label>
+          <label><input type="checkbox" value="شعارات الشركاء والرعاة"> شعارات الشركاء والرعاة</label>
+          <label><input type="checkbox" value="شعار رؤية 2030"> شعار رؤية 2030</label>
+        </div>
+        <label class="f">الصيغ المطلوبة للتسليم</label>
+        <div class="chips2" id="d_formats">
+          <label><input type="checkbox" value="صورة PNG/JPG" checked> صورة PNG / JPG</label>
+          <label><input type="checkbox" value="PDF للطباعة"> PDF للطباعة</label>
+          <label><input type="checkbox" value="ملف مفتوح"> ملف مفتوح للتعديل</label>
+          <label><input type="checkbox" value="فيديو MP4"> فيديو MP4</label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="sec-title"><span class="st"></span>المواعيد والمرفقات</h2>
+        <div class="row2">
+          <div><label class="f">تاريخ التسليم المطلوب <span class="req">*</span></label><input class="in ltr" id="d_due" type="date">
+            <div class="hint">يفضّل قبل الموعد بـ 5 أيام عمل على الأقل للتصاميم، و7 أيام للمطبوعات.</div></div>
+          <div><label class="f">تاريخ الفعالية <span class="muted small">(إن وجد)</span></label><input class="in ltr" id="d_event" type="date"></div>
+        </div>
+        <label class="f">ملفات مرجعية <span class="muted small">(اختياري: شعارات، صور، أمثلة تعجبك)</span></label>
+        <div class="drop" id="d_drop" tabindex="0" role="button"><div class="ic" id="d_upIc"></div><b>اضغط لإرفاق الملفات</b><div class="hint">صور أو PDF حتى 20 م.ب</div>
+          <input type="file" id="d_file" accept="image/*,application/pdf,.pdf" multiple hidden></div>
+        <div class="thumbs" id="d_thumbs"></div>
+      </section>
+
+      <div class="err-box hidden" id="d_err"></div>
+      <div class="card">
+        <div class="bar hidden" id="d_bar"><i></i></div>
+        <button class="btn primary big" id="d_send" type="submit"><span id="d_sendIc"></span><span id="d_sendTxt">إرسال طلب التصميم</span></button>
       </div>
     </form>
 
@@ -458,7 +557,7 @@
     var CFG = null, STARS = TH.star().replace('<svg', '<svg width="14" height="14"');
     var LIM = { instagram: 2200, tiktok: 2200, x: 280, linkedin: 3000, snapchat: 80, whatsapp: 900, youtube: 4900 };
     var NAMES = { instagram: 'إنستغرام', tiktok: 'تيك توك', x: 'X', linkedin: 'لينكدين', snapchat: 'سناب', whatsapp: 'واتساب', youtube: 'يوتيوب' };
-    document.getElementById('hero').innerHTML = TH.hero('طلبات النشر', 'أرسل منشورك لحسابات ثروة الشبابية. نراجعه على لوائح النشر، وننشره في موعده.', 'منصة النشر الموحدة') + TH.strip(15);
+    document.getElementById('hero').innerHTML = TH.hero('طلبات النشر والتصاميم', 'أرسل منشورك لحسابات ثروة الشبابية، أو اطلب تصميمًا من فريق الاتصال.', 'منصة الطلبات الموحدة') + TH.strip(15);
     document.querySelectorAll('.st, #t-star1').forEach(function (e) { e.innerHTML = STARS; });
     document.getElementById('sendIc').innerHTML = TH.icon('send');
     document.getElementById('addIc').innerHTML = TH.icon('upload');
@@ -633,7 +732,7 @@
       }).join('') : '<div class="muted small">ملفات اللوائح لم تُرفع بعد.</div>';
     }
     function renderConfig(cfg) {
-      var first = !CFG; CFG = cfg;
+      var first = !CFG; CFG = cfg; fillEntities(cfg.programs);
       if (first) {
         document.getElementById('program').innerHTML = '<option value="">— اختر —</option>' + cfg.programs.map(function (p) { return '<option>' + TH.esc(p) + '</option>'; }).join('');
         addPost();
@@ -719,9 +818,126 @@
         '<p style="margin-top:20px"><button class="btn primary" onclick="location.reload()">' + TH.icon('send') + 'إرسال طلب جديد</button></p>';
       document.getElementById('f').classList.add('hidden');
       document.getElementById('policy').classList.add('hidden');
+      document.getElementById('kindCard').classList.add('hidden');
       d.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+
+    // ===================== اختيار نوع الطلب =====================
+    var KIND = '';
+    document.getElementById('kIc1').innerHTML = TH.icon('send');
+    document.getElementById('kIc2').innerHTML = TH.icon('edit');
+    function setKind(k) {
+      KIND = k;
+      document.querySelectorAll('.kind button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); });
+      document.getElementById('pubWrap').classList.toggle('hidden', k !== 'publish');
+      document.getElementById('df').classList.toggle('hidden', k !== 'design');
+      document.querySelector('#hero h1') && (document.querySelector('#hero h1').textContent = k === 'design' ? 'طلب تصميم' : 'طلب نشر');
+      try { history.replaceState(null, '', '#' + k); } catch (e) { /* لا شيء */ }
+    }
+    document.querySelectorAll('.kind button').forEach(function (b) { b.onclick = function () { setKind(b.dataset.k); document.getElementById(b.dataset.k === 'design' ? 'df' : 'pubWrap').scrollIntoView({ behavior: 'smooth' }); }; });
+    if (/design/.test(location.hash)) setKind('design'); else if (/publish/.test(location.hash)) setKind('publish');
+
+    // ===================== طلب التصميم =====================
+    var DTYPES = [
+      { g: 'رقمي (للمنصات)', items: ['بوست إنستغرام', 'ستوري إنستغرام', 'سناب شات', 'غلاف ريلز / تيك توك', 'بوست X', 'بوست لينكدإن', 'حالة أو بطاقة واتساب', 'صورة مصغّرة يوتيوب', 'موشن جرافيك / فيديو قصير', 'عرض تقديمي', 'إعلان رقمي / بانر موقع'] },
+      { g: 'مطبوعات', items: ['مكعبات', 'رول أب', 'بنر خارجي (فلكس)', 'ستاند / بوب أب', 'خلفية مسرح', 'بوستر', 'فلاير', 'مطوية / بروشور', 'كتيّب أو تقرير', 'شهادات شكر أو حضور', 'دعوات', 'بطاقات تعريف (بادج)', 'لوحات إرشادية', 'ستيكرات وملصقات', 'إطار تصوير (فوتو بوث)', 'دروع وتكريم'] },
+      { g: 'هدايا وزي', items: ['تيشيرتات / زي موحد', 'كابات', 'أكواب', 'دفاتر وأقلام', 'شنط وهدايا دعائية'] },
+      { g: 'هوية', items: ['شعار برنامج أو فعالية', 'هوية بصرية كاملة', 'أخرى'] }
+    ];
+    (function () {
+      var p = function (n) { return ('0' + n).slice(-2); }, t = new Date();
+      var today = t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate());
+      document.getElementById('d_today').value = t.toLocaleDateString('ar-SA-u-ca-gregory', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('d_due').min = today; document.getElementById('d_event').min = today;
+      document.getElementById('d_upIc').innerHTML = TH.icon('upload');
+      document.getElementById('d_sendIc').innerHTML = TH.icon('send');
+      document.getElementById('d_types').innerHTML = DTYPES.map(function (g) {
+        return '<h4>' + TH.esc(g.g) + '</h4><div class="plats">' + g.items.map(function (it) {
+          return '<label class="plat"><input type="checkbox" value="' + TH.esc(it) + '"><span class="box">' + TH.icon('check') + '</span><div><b>' + TH.esc(it) + '</b></div></label>';
+        }).join('') + '</div>';
+      }).join('');
+      document.getElementById('d_types').addEventListener('change', function () {
+        document.getElementById('d_other').classList.toggle('hidden', !document.querySelector('#d_types input[value="أخرى"]:checked'));
+      });
+      var ent = document.getElementById('d_entity');
+      ent.addEventListener('change', function () { document.getElementById('d_entity2').classList.toggle('hidden', ent.value !== '__other'); });
+    })();
+    function fillEntities(programs) {
+      var ent = document.getElementById('d_entity'); if (ent.options.length > 1) return;
+      ent.innerHTML = '<option value="">— اختر —</option>' + (programs || []).map(function (x) { return '<option>' + TH.esc(x) + '</option>'; }).join('') + '<option value="__other">جهة أخرى…</option>';
+    }
+    var DFILES = [];
+    (function () {
+      var drop = document.getElementById('d_drop'), inp = document.getElementById('d_file');
+      drop.onclick = function () { inp.click(); };
+      inp.onchange = function () {
+        Array.prototype.forEach.call(inp.files, function (f) {
+          var t = f.type || TH.guessMime(f.name);
+          if (!/^image\//.test(t) && t !== 'application/pdf') return TH.toast('«' + f.name + '» صيغة غير مقبولة.', true);
+          if (f.size > 20971520) return TH.toast('«' + f.name + '» أكبر من 20 م.ب.', true);
+          if (DFILES.length >= 10) return TH.toast('الحد 10 ملفات.', true);
+          DFILES.push({ key: Math.random().toString(36).slice(2), file: f, mime: t, url: /^image\//.test(t) ? URL.createObjectURL(f) : '' });
+        });
+        inp.value = ''; drawD();
+      };
+      document.getElementById('d_thumbs').onclick = function (e) { var b = e.target.closest('[data-rm]'); if (!b) return; DFILES = DFILES.filter(function (x) { return x.key !== b.dataset.rm; }); drawD(); };
+    })();
+    function drawD() {
+      document.getElementById('d_thumbs').innerHTML = DFILES.map(function (it) {
+        return '<div class="thumb' + (it.up ? ' done' : '') + '"><div class="pv"' + (it.url ? ' style="background-image:url(' + it.url + ')"' : '') + '>' + (it.url ? '' : TH.icon('pdf')) + '</div><button type="button" class="rm" data-rm="' + it.key + '">' + TH.icon('x') +
+          '</button><div class="meta"><b>' + TH.esc(it.file.name) + '</b><span class="muted">' + TH.size(it.file.size) + '</span></div><div class="prog"><i style="width:' + Math.round((it.p || 0) * 100) + '%"></i></div></div>';
+      }).join('');
+    }
+    function dErr(m) { var e = document.getElementById('d_err'); e.className = 'err-box note bad'; e.innerHTML = TH.icon('alert') + '<div>' + TH.esc(m) + '</div>'; e.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    var DSENDING = false;
+    document.getElementById('df').addEventListener('submit', function (e) {
+      e.preventDefault(); if (DSENDING) return;
+      document.getElementById('d_err').className = 'err-box hidden';
+      var v = function (id) { return document.getElementById(id).value.trim(); };
+      var checked = function (sel) { return Array.prototype.map.call(document.querySelectorAll(sel + ' input:checked'), function (i) { return i.value; }); };
+      var ent = v('d_entity') === '__other' ? v('d_entity2') : v('d_entity');
+      var types = checked('#d_types');
+      if (!v('d_name')) return dErr('اكتب اسمك.');
+      if (!/^(05\d{8}|5\d{8}|\+?9665\d{8})$/.test(v('d_phone').replace(/[\s-]/g, '').replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }))) return dErr('رقم الجوال غير صحيح. اكتبه بصيغة 05XXXXXXXX.');
+      if (!ent) return dErr('اختر الجهة أو البرنامج.');
+      if (!types.length) return dErr('اختر نوع تصميم واحد على الأقل.');
+      if (types.indexOf('أخرى') > -1 && !v('d_other')) return dErr('اكتب وش التصميم الآخر.');
+      if (!v('d_title')) return dErr('اكتب عنوان التصميم أو اسم الفعالية.');
+      if (!v('d_details')) return dErr('اكتب فكرة التصميم وتفاصيله.');
+      if (!v('d_due')) return dErr('حدد تاريخ التسليم المطلوب.');
+      DSENDING = true;
+      var btn = document.getElementById('d_send'); btn.disabled = true; document.getElementById('d_sendTxt').textContent = 'جارٍ الإرسال…';
+      var bar = document.getElementById('d_bar'); bar.classList.remove('hidden');
+      var chain = Promise.resolve();
+      DFILES.forEach(function (it, i) {
+        chain = chain.then(function () {
+          if (it.up) return;
+          return TH.upload(it.file, 'request', '', function (p) { it.p = p; bar.querySelector('i').style.width = Math.round(((i + p) / (DFILES.length + 1)) * 100) + '%'; drawD(); })
+            .then(function (f) { it.up = { id: f.id, name: it.file.name, mime: it.mime, size: it.file.size }; it.p = 1; drawD(); });
+        });
+      });
+      chain.then(function () {
+        bar.querySelector('i').style.width = '90%';
+        return TH.run('submitDesign', {
+          name: v('d_name'), phone: v('d_phone'), entity: ent, types: types, otherType: v('d_other'), title: v('d_title'), details: v('d_details'),
+          texts: v('d_texts'), sizes: v('d_sizes'), identity: v('d_identity'), priority: v('d_priority'), logos: checked('#d_logos').join('، '),
+          formats: checked('#d_formats').join('، '), due: v('d_due'), eventDate: v('d_event'), files: DFILES.map(function (it) { return it.up; })
+        });
+      }).then(function (res) {
+        bar.querySelector('i').style.width = '100%';
+        var d = document.getElementById('done');
+        d.innerHTML = '<div class="big-ic">' + TH.icon('check') + '</div><h2>وصل طلب التصميم</h2><p>رقم الطلب:</p><span class="req-no">' + TH.esc(res.id) + '</span>' +
+          '<p class="muted">فريق التصميم يراجع طلبك ويتواصل معك على رقمك إذا احتاج تفاصيل.</p>' +
+          '<p style="margin-top:20px"><button class="btn primary" onclick="location.reload()">' + TH.icon('send') + 'إرسال طلب جديد</button></p>';
+        document.getElementById('df').classList.add('hidden'); document.getElementById('kindCard').classList.add('hidden');
+        d.classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' });
+      }).catch(function (err) {
+        DSENDING = false; btn.disabled = false; document.getElementById('d_sendTxt').textContent = 'إعادة المحاولة';
+        dErr(err && err.message || 'تعذر الإرسال، حاول مرة ثانية.');
+      });
+    });
 
     // يعرض النموذج فورًا من الإعدادات المحفوظة، ثم يحدّثها من الخادم في الخلفية
     var FCK = 'th_form_cfg_v1', early = null;
