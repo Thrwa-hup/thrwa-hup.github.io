@@ -249,6 +249,25 @@
     .who { margin-top: 10px; display: flex; gap: 6px; align-items: center; justify-content: flex-end; color: #fff; font-size: 13px; }
   .who button { font: inherit; border: 1.5px solid rgba(255,255,255,.4); background: transparent; color: #fff; border-radius: 99px; padding: 3px 12px; cursor: pointer; }
   .who button.on { background: var(--or); border-color: var(--or); color: var(--navy); font-weight: 700; }
+  .phases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 860px) { .phases { grid-template-columns: 1fr; } }
+  .phase { background: #fff; border: 2px solid var(--line); border-radius: 16px; padding: 14px; position: relative; }
+  .phase.now { border-color: var(--navy); box-shadow: 0 0 0 4px rgba(72,185,203,.18); }
+  .phase h3 { margin: 0; font-size: 18px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .phase .when { color: var(--muted); font-size: 13px; margin: 2px 0 10px; }
+  .phase .here { background: var(--or); color: var(--navy); font-size: 12px; padding: 2px 10px; border-radius: 99px; font-weight: 700; }
+  .task { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px dashed var(--line); }
+  .task:first-of-type { border-top: 0; }
+  .task .tk { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--line); background: #fff; cursor: pointer; flex: none; display: grid; place-items: center; padding: 0; margin-top: 2px; color: #fff; }
+  .task .tk svg { width: 14px; height: 14px; opacity: 0; }
+  .task.done .tk { background: #2e9d6a; border-color: #2e9d6a; }
+  .task.done .tk svg { opacity: 1; }
+  .task.done .tt { text-decoration: line-through; color: var(--muted); }
+  .task .tt { font-weight: 500; cursor: pointer; }
+  .task .tm { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; }
+  .task.prog .tk { border-color: var(--tq); background: var(--tq-soft); }
+  .tform { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; }
+  @media (max-width: 860px) { .tform { grid-template-columns: 1fr 1fr; } .tform .tf-title { grid-column: 1 / -1; } }
 </style>
 </head>
 <body>
@@ -533,6 +552,11 @@
     function render() {
       document.getElementById('hero').innerHTML = heroHtml();
       document.getElementById('runNow').onclick = runNow;
+      if (IS_MOB && inAppBrowser() && !document.getElementById('iabNote')) {
+        var nb = document.createElement('div'); nb.id = 'iabNote'; nb.className = 'note or wrap'; nb.style.cssText = 'margin:10px auto';
+        nb.innerHTML = '<div><b>تنبيه:</b> لوحة التحكم مفتوحة داخل تطبيق (واتساب أو قوقل أو تيليجرام)، وهذا يمنع أزرار فتح التطبيقات. اضغط ⋯ واختر «فتح في Safari» أو «فتح في Chrome».</div>';
+        var hd = document.querySelector('header'); if (hd && hd.parentNode) hd.parentNode.insertBefore(nb, hd.nextSibling);
+      }
       document.querySelectorAll('[data-who]').forEach(function (b) { b.onclick = function () { setActor(b.dataset.who); }; });
       var s = D.stats || {}, open = D.issues.filter(function (i) { return i.state !== 'محلولة'; }).length;
       D.designs = D.designs || [];
@@ -552,16 +576,18 @@
       document.querySelectorAll('.stat').forEach(function (el) {
         el.onclick = function () { var g = el.dataset.go; if (g === '#issues') setTab('issues'); else if (g === '#designs') setTab('designs'); else { FILTER = g; setTab('requests'); } };
       });
-      var tabs = [['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['designs', 'edit', 'طلبات التصاميم', desNew], ['platforms', 'plug', 'المنصات المرتبطة'], ['issues', 'alert', 'المشاكل', open],
+      var myOpen = (D.tasks || []).filter(function (t) { return t.status !== 'منجزة' && (!ACTOR || t.assignee === ACTOR); }).length;
+      var prjNew = (D.projects || []).filter(function (x) { return x.status === 'جديد'; }).length;
+      var tabs = [['tasks', 'check', 'المهام', myOpen], ['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['designs', 'edit', 'طلبات التصاميم', desNew], ['projects', 'book', 'وصف المشاريع', prjNew], ['platforms', 'plug', 'المنصات المرتبطة'], ['issues', 'alert', 'المشاكل', open],
         ['media', 'film', 'مكتبة المقاطع', D.media.length], ['archive', 'archive', 'الأرشيف'], ['guide', 'book', 'دليل نشر إنستغرام'], ['settings', 'gear', 'الروابط والإعدادات']];
       document.getElementById('tabs').innerHTML = tabs.map(function (t) {
         return '<button data-t="' + t[0] + '" class="' + (TAB === t[0] ? 'on' : '') + '">' + I(t[1]) + t[2] + (t[3] ? ' <span class="cnt">' + t[3] + '</span>' : '') + '</button>';
       }).join('');
       document.querySelectorAll('#tabs button').forEach(function (b) { b.onclick = function () { setTab(b.dataset.t); }; });
       document.getElementById('panes').innerHTML =
-        '<section class="pane" id="p-requests"></section><section class="pane" id="p-designs"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
+        '<section class="pane" id="p-tasks"></section><section class="pane" id="p-requests"></section><section class="pane" id="p-designs"></section><section class="pane" id="p-projects"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
         '<section class="pane" id="p-media"></section><section class="pane" id="p-archive"></section><section class="pane guide" id="p-guide"></section><section class="pane" id="p-settings"></section>';
-      renderRequests(); renderDesigns(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
+      renderTasks(); renderProjects(); renderRequests(); renderDesigns(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
       setTab(TAB, true);
     }
     function setTab(t, noScroll) {
@@ -570,6 +596,8 @@
       document.querySelectorAll('.pane').forEach(function (p) { p.classList.toggle('on', p.id === 'p-' + t); });
       if (t === 'requests') renderRequests();
       if (t === 'designs') renderDesigns();
+      if (t === 'tasks') renderTasks();
+      if (t === 'projects') renderProjects();
       if (!noScroll) document.getElementById('tabs').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -616,6 +644,155 @@
       el.querySelectorAll('[data-act]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); act(b); }; });
     }
 
+
+    // ===================== المهام والمراحل =====================
+    var TFILTER = 'mine', TEDIT = null;
+    function phaseNow(phases) {
+      var today = new Date().toISOString().slice(0, 10), cur = phases[0] && phases[0].key;
+      phases.forEach(function (p) { if (p.from && today >= p.from) cur = p.key; });
+      return cur;
+    }
+    function shortDate(iso) { if (!iso) return ''; return new Date(iso).toLocaleDateString('ar-SA-u-ca-gregory', { day: 'numeric', month: 'long' }); }
+    function phaseWhen(p) {
+      var f = function (d) { return new Date(d + 'T12:00:00').toLocaleDateString('ar-SA-u-ca-gregory', { day: 'numeric', month: 'long', year: 'numeric' }); };
+      if (p.from && p.to) return 'من ' + f(p.from) + ' إلى ' + f(p.to);
+      if (p.from) return 'تبدأ ' + f(p.from);
+      if (p.to) return 'حتى ' + f(p.to);
+      return '';
+    }
+    function renderTasks() {
+      var el = document.getElementById('p-tasks'); if (!el || !D) return;
+      var phases = D.phases || [], team = D.team || ['محمد', 'أنس'], tasks = D.tasks || [], now = phaseNow(phases);
+      var vis = tasks.filter(function (t) {
+        if (TFILTER === 'mine') return !ACTOR || t.assignee === ACTOR || !t.assignee;
+        if (TFILTER === 'open') return t.status !== 'منجزة';
+        if (TFILTER === 'all') return true;
+        return t.assignee === TFILTER;
+      });
+      var opts = function (list, cur, empty) { return (empty ? '<option value="">' + empty + '</option>' : '') + list.map(function (x) { var v = x.key || x, n = x.name || x; return '<option value="' + E(v) + '"' + (v === cur ? ' selected' : '') + '>' + E(n) + '</option>'; }).join(''); };
+      var ed = TEDIT || {};
+      el.innerHTML =
+        '<div class="card" style="margin-bottom:14px"><h3 style="margin:0 0 10px">' + (ed.id ? 'تعديل مهمة ' + E(ed.id) : 'إضافة مهمة') + '</h3>' +
+          '<div class="tform"><div class="tf-title"><label class="f">المهمة</label><input class="in" id="tTitle" value="' + E(ed.title || '') + '" placeholder="وش المطلوب؟"></div>' +
+          '<div><label class="f">المسؤول</label><select class="in" id="tWho">' + opts(team, ed.assignee != null ? ed.assignee : ACTOR, 'الفريق') + '</select></div>' +
+          '<div><label class="f">المرحلة</label><select class="in" id="tPhase">' + opts(phases, ed.phase || now) + '</select></div>' +
+          '<div><label class="f">الموعد</label><input class="in ltr" id="tDue" type="date" value="' + E((ed.due || '').slice(0, 10)) + '"></div>' +
+          '<div><button class="btn primary" id="tSave">' + I('check') + (ed.id ? 'حفظ' : 'إضافة') + '</button></div></div>' +
+          '<label class="f">تفاصيل <span class="muted small">(اختياري)</span></label><textarea class="in" id="tDetails" style="min-height:56px">' + E(ed.details || '') + '</textarea>' +
+          (TEDIT ? '<div class="actions" style="margin-top:8px"><button class="btn sm ghost" id="tCancel">إلغاء</button>' + (ed.id ? '<button class="btn sm ghost" style="color:var(--bad)" id="tDel">' + I('trash') + 'حذف المهمة</button>' : '') + '</div>' : '') +
+          '<div class="hint">إذا اخترت مسؤول، يوصله إيميل بالمهمة.</div></div>' +
+        '<div class="toolbar">' + [['mine', ACTOR ? 'مهامي (' + ACTOR + ')' : 'مهامي'], ['open', 'غير المنجزة'], ['all', 'الكل']].concat(team.map(function (n) { return [n, n]; }))
+          .map(function (f) { return '<button class="chip' + (TFILTER === f[0] ? ' on' : '') + '" data-tf="' + E(f[0]) + '">' + E(f[1]) + '</button>'; }).join('') + '</div>' +
+        '<div class="phases">' + phases.map(function (p) {
+          var list = vis.filter(function (t) { return t.phase === p.key; });
+          var all = tasks.filter(function (t) { return t.phase === p.key; }), done = all.filter(function (t) { return t.status === 'منجزة'; }).length;
+          return '<div class="phase' + (p.key === now ? ' now' : '') + '"><h3>' + E(p.name) + (p.key === now ? ' <span class="here">أنتم هنا</span>' : '') + '</h3>' +
+            '<div class="when">' + E(phaseWhen(p)) + (all.length ? ' · أُنجز ' + done + ' من ' + all.length : '') + '</div>' +
+            (list.length ? list.map(taskRow).join('') : '<div class="muted small">لا توجد مهام هنا.</div>') + '</div>';
+        }).join('') + '</div>';
+      el.querySelectorAll('[data-tf]').forEach(function (c) { c.onclick = function () { TFILTER = c.dataset.tf; renderTasks(); }; });
+      el.querySelectorAll('[data-tk]').forEach(function (b) { b.onclick = function () { taskCycle(b); }; });
+      el.querySelectorAll('[data-te]').forEach(function (b) { b.onclick = function () { TEDIT = (D.tasks || []).filter(function (t) { return t.id === b.dataset.te; })[0] || null; renderTasks(); window.scrollTo({ top: el.offsetTop - 20, behavior: 'smooth' }); }; });
+      document.getElementById('tSave').onclick = function () { taskSave(this); };
+      var c = document.getElementById('tCancel'); if (c) c.onclick = function () { TEDIT = null; renderTasks(); };
+      var d = document.getElementById('tDel'); if (d) d.onclick = function () {
+        if (!confirm('حذف المهمة؟')) return;
+        var id = TEDIT.id;
+        needActor().then(function () { return call(d, 'adminTaskDelete', id, ACTOR); }).then(function () { D.tasks = D.tasks.filter(function (t) { return t.id !== id; }); TEDIT = null; render(); setTab('tasks', true); TH.toast('حُذفت المهمة'); }, function () {});
+      };
+    }
+    function taskRow(t) {
+      var cls = t.status === 'منجزة' ? ' done' : t.status === 'قيد التنفيذ' ? ' prog' : '';
+      var late = t.due && t.status !== 'منجزة' && new Date(t.due) < new Date(new Date().toDateString());
+      return '<div class="task' + cls + '"><button class="tk" data-tk="' + E(t.id) + '" title="' + E(t.status) + ' — اضغط للتغيير">' + I('check') + '</button>' +
+        '<div style="flex:1"><div class="tt" data-te="' + E(t.id) + '">' + E(t.title) + '</div>' +
+        (t.details ? '<div class="small muted" style="white-space:pre-wrap">' + E(t.details) + '</div>' : '') +
+        '<div class="tm"><span class="badge ' + (t.assignee ? 'tq' : 'gray') + '">' + I('user').replace('<svg', '<svg width="11" height="11"') + ' ' + E(t.assignee || 'الفريق') + '</span>' +
+        (t.due ? '<span class="badge ' + (late ? 'bad' : 'gray') + '">' + I('calendar').replace('<svg', '<svg width="11" height="11"') + ' ' + E(shortDate(t.due)) + (late ? ' (متأخرة)' : '') + '</span>' : '') +
+        (t.status === 'قيد التنفيذ' ? '<span class="badge or">قيد التنفيذ</span>' : '') + '</div></div></div>';
+    }
+    function taskCycle(b) {
+      var t = (D.tasks || []).filter(function (x) { return x.id === b.dataset.tk; })[0]; if (!t) return;
+      var next = { 'لم تبدأ': 'قيد التنفيذ', 'قيد التنفيذ': 'منجزة', 'منجزة': 'لم تبدأ' }[t.status] || 'قيد التنفيذ';
+      needActor().then(function () {
+        t.status = next; renderTasks();
+        return TH.run('adminTaskStatus', KEY, t.id, next, ACTOR);
+      }).then(function (nt) { if (nt) D.tasks = D.tasks.map(function (x) { return x.id === nt.id ? nt : x; }); TH.toast(next === 'منجزة' ? 'أحسنت! أُنجزت المهمة' : 'صارت: ' + next); }, function (e) { if (e && e.message !== 'cancel') TH.toast(e.message, true); load(true); });
+    }
+    function taskSave(b) {
+      var v = function (id) { return document.getElementById(id).value.trim(); };
+      if (!v('tTitle')) return TH.toast('اكتب المهمة', true);
+      var t = { id: (TEDIT && TEDIT.id) || '', title: v('tTitle'), details: v('tDetails'), assignee: v('tWho'), phase: v('tPhase'), due: v('tDue'), status: (TEDIT && TEDIT.status) || 'لم تبدأ' };
+      needActor().then(function () { return call(b, 'adminTaskSave', t, ACTOR); }).then(function (nt) {
+        var exists = (D.tasks || []).some(function (x) { return x.id === nt.id; });
+        D.tasks = exists ? D.tasks.map(function (x) { return x.id === nt.id ? nt : x; }) : (D.tasks || []).concat([nt]);
+        TEDIT = null; render(); setTab('tasks', true);
+        TH.toast((exists ? 'حُفظت المهمة' : 'أُضيفت المهمة') + (nt.mailed ? ' — ' + nt.mailed : ''));
+      }, function () {});
+    }
+    function emailCard() {
+      var em = D.emails || {};
+      return '<div class="pcard"><h3>' + I('send') + ' إيميلات المهام</h3><p class="muted small" style="margin-top:0">لما تنضاف مهمة لأحد، يوصله إيميل.</p>' +
+        (D.team || ['محمد', 'أنس']).map(function (n) { return '<label class="f">إيميل ' + E(n) + '</label><input class="in ltr" data-em="' + E(n) + '" type="email" value="' + E(em[n] || '') + '" placeholder="name@example.com">'; }).join('') +
+        '<div class="actions" style="margin-top:8px"><button class="btn sm primary" id="emSave">' + I('check') + 'حفظ الإيميلات</button></div></div>';
+    }
+    function bindEmails() {
+      var b = document.getElementById('emSave'); if (!b) return;
+      b.onclick = function () {
+        var o = {}; document.querySelectorAll('[data-em]').forEach(function (i) { o[i.dataset.em] = i.value.trim(); });
+        call(b, 'adminSetTeamEmails', o).then(function (r) { D.emails = r; TH.toast('حُفظت الإيميلات'); });
+      };
+    }
+
+    // ===================== وصف المشاريع =====================
+    var PFILTER = 'active';
+    var PST_CLS = { 'جديد': 'or', 'قيد الدراسة': 'tq', 'معتمد': 'ok', 'منجز': 'ok', 'مؤرشف': 'gray' };
+    function renderProjects() {
+      var el = document.getElementById('p-projects'); if (!el || !D) return;
+      var sts = D.projectStatuses || ['جديد', 'قيد الدراسة', 'معتمد', 'منجز', 'مؤرشف'];
+      var list = (D.projects || []).filter(function (p) {
+        if (PFILTER === 'active') return p.status !== 'منجز' && p.status !== 'مؤرشف';
+        return PFILTER === 'all' || p.status === PFILTER;
+      });
+      el.innerHTML = '<div class="toolbar">' + [['active', 'النشطة']].concat(sts.map(function (x) { return [x, x]; })).concat([['all', 'الكل']])
+        .map(function (f) { return '<button class="chip' + (PFILTER === f[0] ? ' on' : '') + '" data-pf="' + E(f[0]) + '">' + E(f[1]) + '</button>'; }).join('') + '</div>' +
+        (list.length ? list.map(function (p) {
+          var row = function (k, v) { return v ? '<div style="margin-top:10px"><b class="small muted">' + k + '</b><div style="white-space:pre-wrap">' + E(v) + '</div></div>' : ''; };
+          var when = p.start ? dDate(p.start) + (p.end ? ' ← ' + dDate(p.end) : '') : '';
+          return '<details class="req" data-pid="' + E(p.id) + '"' + (p._open ? ' open' : '') + '><summary><div class="pv">' + I('book') + '</div>' +
+            '<div><h3><span class="id">' + E(p.id) + '</span>' + E(p.title) + ' <span class="muted small" style="font-weight:400">— ' + E(p.entity) + ' · ' + E(p.name) + '</span></h3>' +
+            (when ? '<div class="sub"><span class="badge tq">' + I('calendar').replace('<svg', '<svg width="12" height="12"') + ' ' + E(when) + '</span></div>' : '') + '</div>' +
+            '<div class="side"><span class="badge ' + (PST_CLS[p.status] || '') + '">' + E(p.status) + '</span><span class="muted small">وصل ' + E(TH.date(p.created, false)) + '</span></div></summary>' +
+            '<div class="body" style="padding:4px 16px 16px">' + row('وصف المشروع', p.desc) + row('مواعيد المشروع', [when, p.dates].filter(Boolean).join('\n')) +
+              row('احتياجات المشروع', p.needs) + row('ملاحظات', p.notes) + row('صاحب الطلب', p.name + ' — ' + p.phone) +
+              (p.history ? '<div style="margin-top:10px"><b class="small muted">سجل الإجراءات</b><div class="small" style="white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:8px 10px;margin-top:4px">' + E(p.history) + '</div></div>' : '') +
+              '<div style="margin-top:14px;border-top:1px dashed var(--line);padding-top:12px"><div class="row2"><div><label class="f">الحالة</label><select class="in" data-pst="' + E(p.id) + '">' +
+                sts.map(function (x) { return '<option' + (x === p.status ? ' selected' : '') + '>' + E(x) + '</option>'; }).join('') + '</select></div>' +
+                '<div><label class="f">ملاحظات الفريق</label><input class="in" data-pteam="' + E(p.id) + '" value="' + E(p.team || '') + '"></div></div>' +
+              '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn sm primary" data-pact="save" data-id="' + E(p.id) + '">' + I('check') + 'حفظ</button>' +
+                '<button class="btn sm" data-pact="task" data-id="' + E(p.id) + '">' + I('check') + 'حوّله لمهمة</button>' +
+                '<a class="btn sm" href="https://wa.me/966' + E(String(p.phone).replace(/\D/g, '').replace(/^0/, '').replace(/^966/, '')) + '" target="_blank" rel="noopener">' + I('chat') + 'واتساب صاحب الطلب</a>' +
+                '<button class="btn sm ghost" style="color:var(--bad)" data-pact="del" data-id="' + E(p.id) + '">' + I('trash') + 'حذف</button></div></div></div></details>';
+        }).join('') : '<div class="empty">' + I('book') + '<p>لا توجد مشاريع هنا.</p><p class="small">تنرسل من صفحة الطلبات باختيار «وصف المشاريع».</p></div>');
+      el.querySelectorAll('[data-pf]').forEach(function (c) { c.onclick = function () { PFILTER = c.dataset.pf; renderProjects(); }; });
+      el.querySelectorAll('details[data-pid]').forEach(function (d) { d.addEventListener('toggle', function () { var p = (D.projects || []).filter(function (x) { return x.id === d.dataset.pid; })[0]; if (p) p._open = d.open; }); });
+      el.querySelectorAll('[data-pact]').forEach(function (b) { b.onclick = function () { prjAct(b); }; });
+    }
+    function prjAct(b) {
+      var id = b.dataset.id, a = b.dataset.pact, p = (D.projects || []).filter(function (x) { return x.id === id; })[0];
+      var put = function (np) { if (!np) return; np._open = true; D.projects = D.projects.map(function (x) { return x.id === np.id ? np : x; }); render(); setTab('projects', true); };
+      needActor().then(function () {
+        if (a === 'save') return call(b, 'adminProjectUpdate', id, document.querySelector('[data-pst="' + id + '"]').value, document.querySelector('[data-pteam="' + id + '"]').value, ACTOR).then(function (np) { TH.toast('حُفظ'); put(np); });
+        if (a === 'del') {
+          if (!confirm('حذف المشروع ' + id + '؟ (ينقل لورقة «المحذوفات»)')) return;
+          return call(b, 'adminProjectDelete', id, ACTOR).then(function () { D.projects = D.projects.filter(function (x) { return x.id !== id; }); render(); setTab('projects', true); TH.toast('حُذف'); });
+        }
+        if (a === 'task') {
+          TEDIT = { title: p.title + ' (' + p.entity + ')', details: [p.desc, p.needs ? 'الاحتياجات: ' + p.needs : ''].filter(Boolean).join('\n').slice(0, 1500), assignee: ACTOR, phase: phaseNow(D.phases || []), due: p.start || '' };
+          TEDIT.id = null; setTab('tasks'); renderTasks(); TH.toast('عبّيت المهمة من المشروع — راجعها واضغط إضافة');
+        }
+      }, function () {});
+    }
 
     // ===================== طلبات التصاميم =====================
     var DFILTER = 'active', DQ = '';
@@ -754,9 +931,11 @@
         if (/^05\d{8}$/.test(n)) n = '966' + n.slice(1); else if (/^5\d{8}$/.test(n)) n = '966' + n;
         return 'https://wa.me/' + (n.length >= 11 ? n : '') + '?text=' + encodeURIComponent(txt.value);
       }
-      open.onclick = function (e) {
-        open.href = waLink(); copySync(txt.value);
-        if (IS_MOB) { e.preventDefault(); var n = open.href.match(/wa\.me\/(\d*)/)[1]; location.href = 'whatsapp://send?' + (n ? 'phone=' + n + '&' : '') + 'text=' + encodeURIComponent(txt.value); var w = open.href; setTimeout(function () { if (!document.hidden) location.href = w; }, 1600); }
+      open.onclick = function () {
+        var w = waLink(), n = (w.match(/wa\.me\/(\d*)/) || [])[1];
+        open.href = IS_MOB ? 'whatsapp://send?' + (n ? 'phone=' + n + '&' : '') + 'text=' + encodeURIComponent(txt.value) : w;
+        open.target = IS_MOB ? '_self' : '_blank';
+        copySync(txt.value);
         try { if (numIn.value.trim()) localStorage.setItem('th_designer', numIn.value.trim()); } catch (e) { /* لا شيء */ }
         markSent();
       };
@@ -862,6 +1041,7 @@
       youtube: function () { return 'youtube://'; }
     };
     var IS_MOB = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    function inAppBrowser() { return /FBAN|FBAV|Instagram|Line\/|Telegram|WhatsApp|GSA\/|Snapchat|TikTok|musical_ly|; wv\)/i.test(navigator.userAgent); }
     function goApp(k, text) {
       var web = APPLINK[k] ? APPLINK[k](text, IS_MOB) : (PAPP[k] || [])[1];
       if (!IS_MOB || !APPSCHEME[k]) { window.open(web, '_blank'); return; }
@@ -904,14 +1084,17 @@
         '<div class="appstep"><b>٢) ' + (v.files.length > 1 ? 'الملفات (' + v.files.length + ') — تنزل مع بعض في نفس المنشور' : 'الملف') + '</b><div class="appfiles">' +
           v.files.map(function (f) { return '<a href="https://drive.google.com/uc?export=download&id=' + E(f.id) + '" target="_blank" rel="noopener" style="background-image:url(' + thumbUrl(f.id, 200) + ')" title="تحميل">' + (/^video\//.test(f.mime) ? '<span class="ic">' + I('play') + '</span>' : '') + '<span class="dl">' + I('download') + '</span></a>'; }).join('') +
           '</div>' + (mob && canShare ? '<button class="btn sm primary" data-x="prep">' + I('share') + 'جهّز الملفات للمشاركة</button><div class="hint">بعد التجهيز اضغط «شارك» واختر ' + E(name) + '.</div>' : '<div class="hint">اضغط على الملف عشان تحمّله.</div>') + '</div>' +
-        '<div class="appstep"><b>٣) افتح ' + E(name) + '</b><a class="btn sm accent" data-x="open" href="' + (APPLINK[k] ? APPLINK[k](v.text, mob) : '#') + '" target="_blank" rel="noopener">' + I('link') + 'افتح ' + E(name) + '</a>' +
+        '<div class="appstep"><b>٣) افتح ' + E(name) + '</b><div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          (mob && APPSCHEME[k] ? '<a class="btn sm accent" data-x="open" href="' + E(APPSCHEME[k](v.text)) + '">' + I('link') + 'افتح تطبيق ' + E(name) + '</a>' : '') +
+          '<a class="btn sm' + (mob && APPSCHEME[k] ? ' ghost' : ' accent') + '" data-x="openweb" href="' + E(APPLINK[k] ? APPLINK[k](v.text, mob) : '#') + '" target="_blank" rel="noopener">' + I('link') + (mob && APPSCHEME[k] ? 'أو افتح موقع ' : 'افتح ') + E(name) + '</a></div>' +
+          (mob && inAppBrowser() ? '<div class="note or" style="margin-top:8px"><div>اللوحة مفتوحة داخل تطبيق ثاني، فممكن ما يفتح التطبيق. افتح اللوحة من <b>Safari</b> أو <b>Chrome</b>.</div></div>' : '') +
           '<div class="hint">' + (k === 'whatsapp' ? 'اختر القناة أو المجموعة أو المجتمع، والصق النص مع الصورة.' : k === 'tiktok' ? 'ارفع المقطع والصق النص، واختر «الجميع».' : 'ارفع الملف والصق النص.') + '</div></div>' +
         '<div class="actions"><button class="btn ok" data-x="done">' + I('check') + 'نشرته — سجّل كمنشور</button><button class="btn ghost" data-x="close">إغلاق</button></div></div>';
       document.body.appendChild(m);
       m.onclick = function (e) { if (e.target === m) m.remove(); };
       var prepared = null;
       m.querySelector('[data-x=copy]').onclick = function () { copySync(v.text); TH.toast('نُسخ النص'); };
-      m.querySelector('[data-x=open]').addEventListener('click', function (e) { copySync(v.text); if (IS_MOB) { e.preventDefault(); goApp(k, v.text); } });
+      m.querySelectorAll('[data-x=open],[data-x=openweb]').forEach(function (a) { a.addEventListener('click', function () { copySync(v.text); }); });
       m.querySelector('[data-x=close]').onclick = function () { m.remove(); };
       m.querySelector('[data-x=done]').onclick = function () { var b = this; call(b, 'adminMarkManual', r.id, k, '').then(function (nr) { m.remove(); TH.toast('سُجّل منشور في ' + name); replaceReq(nr); }); };
       var pb = m.querySelector('[data-x=prep]');
@@ -1558,12 +1741,12 @@
         lnk('قاعدة البيانات (Google Sheet)', L.sheet) + lnk('مجلد المنصة في درايف', L.folder) + '</div>' +
         '<div class="pcard"><h3>ملفات لوائح النشر (PDF)</h3><p class="muted small" style="margin-top:0">تظهر هذه الملفات أعلى صفحة طلبات النشر. ارفع النسخة المعتمدة متى ما تحدّثت.</p><div id="polList">' + polHtml(D.policyFiles) + '</div>' +
         '<div class="actions"><label class="btn primary sm">' + I('upload') + 'رفع ملف PDF<input type="file" id="polUp" accept="application/pdf,.pdf" hidden></label></div><div class="bar hidden" id="polBar" style="margin-top:10px"><i></i></div></div>' +
-        tgCard() + alertCard() +
+        emailCard() + tgCard() + alertCard() +
         '<div class="pcard"><h3>دورة النشر الآلي</h3><ul class="steps" style="padding-right:18px"><li>تعمل كل 3 ساعات على خوادم Google، حتى لو كل الأجهزة مطفية.</li><li>تنشر الطلبات <b>المعتمدة</b> التي حان موعدها فقط.</li>' +
         '<li>الطلب «المقبول» آليًا ينتظر موعده وينشر مباشرة بدون تدخل منك. لو تبي تعتمد كل طلب بنفسك، غيّر «طريقة النشر» من تبويب «المنصات المرتبطة».</li><li>آخر دورة: ' + E(D.lastRun ? TH.date(D.lastRun) : '—') + '</li></ul>' +
         '<div class="actions"><button class="btn accent" id="runNow2">' + I('refresh') + 'شغّل دورة النشر الآن</button></div></div></div>';
       document.querySelectorAll('[data-copy]').forEach(function (b) { b.onclick = function () { TH.copy(b.dataset.copy); }; });
-      bindAlerts();
+      bindAlerts(); bindEmails();
       document.getElementById('runNow2').onclick = runNow;
       bindPol();
       document.getElementById('polUp').onchange = function () {

@@ -190,7 +190,13 @@
   .done-list { text-align: right; max-width: 600px; margin: 10px auto 0; }
   .done-item { border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-top: 10px; }
   .done-item .req-no { font-size: 17px; padding: 2px 12px; margin: 0 0 6px; }
-  .kind { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .kind { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 760px) { .kind { grid-template-columns: 1fr; } }
+  .prj { border: 2px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; background: #fff; }
+  .prj-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .prj-hd b { font-size: 17px; }
+  .add-mini { font: inherit; border: 1.5px dashed var(--navy); background: transparent; color: var(--navy); border-radius: 12px; padding: 8px 14px; cursor: pointer; margin-top: 10px; display: inline-flex; gap: 6px; align-items: center; }
+  .add-mini svg { width: 16px; height: 16px; }
   .kind button { font: inherit; text-align: right; display: flex; gap: 12px; align-items: center; padding: 18px 16px; border-radius: 16px; border: 2px solid var(--line); background: #fff; color: var(--navy); cursor: pointer; transition: all .15s; }
   .kind button .ic { width: 48px; height: 48px; border-radius: 14px; background: var(--tq-soft); display: grid; place-items: center; flex: none; }
   .kind button .ic svg { width: 26px; height: 26px; }
@@ -216,6 +222,7 @@
       <div class="kind">
         <button type="button" data-k="publish"><span class="ic" id="kIc1"></span><div><b>طلب نشر</b><span>منشور جاهز ينزل في حسابات ثروة</span></div></button>
         <button type="button" data-k="design"><span class="ic" id="kIc2"></span><div><b>طلب تصميم</b><span>تصميم للمنصات أو مطبوعات أو هدايا</span></div></button>
+        <button type="button" data-k="projects"><span class="ic" id="kIc3"></span><div><b>وصف المشاريع</b><span>اسم المشروع ووصفه ومواعيده واحتياجاته</span></div></button>
       </div>
     </section>
     <div id="pubWrap" class="hidden">
@@ -302,6 +309,25 @@
         <div class="bar hidden" id="d_bar"><i></i></div>
         <button class="btn primary big" id="d_send" type="submit"><span id="d_sendIc"></span><span id="d_sendTxt">إرسال طلب التصميم</span></button>
       </div>
+    </form>
+
+    <form id="pf" class="hidden" novalidate>
+      <section class="card">
+        <h2 class="sec-title"><span class="st"></span>بياناتك</h2>
+        <div class="row2">
+          <div><label class="f">الاسم <span class="req">*</span></label><input class="in" id="p_name" autocomplete="name"></div>
+          <div><label class="f">الجوال <span class="req">*</span></label><input class="in" id="p_phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="05XXXXXXXX"></div>
+        </div>
+        <label class="f">الجهة أو البرنامج <span class="req">*</span></label><select class="in" id="p_entity"></select>
+        <input class="in hidden" id="p_entity2" placeholder="اكتب اسم الجهة" style="margin-top:8px">
+      </section>
+      <section class="card">
+        <h2 class="sec-title"><span class="st"></span>المشاريع</h2>
+        <div id="p_list"></div>
+        <button type="button" class="add-post" id="p_add"><span id="p_addIc"></span>إضافة مشروع</button>
+      </section>
+      <div class="err-box hidden" id="p_err"></div>
+      <div class="card"><button class="btn primary big" id="p_send" type="submit"><span id="p_sendIc"></span><span id="p_sendTxt">إرسال وصف المشاريع</span></button></div>
     </form>
 
     <section class="card done-card hidden" id="done"></section>
@@ -551,22 +577,20 @@
       var q = function (sel) { return P.el.querySelector(sel); };
       P.el.innerHTML =
         '<div class="post-hd"><h2><span class="post-no"></span>منشور</h2><button type="button" class="rm-post hidden">حذف هذا المنشور</button></div>' +
-        '<div class="step"><div class="step-t"><i>١</i>وين ينشر؟ <span class="req">*</span></div>' +
-          '<div class="note or" style="margin-bottom:10px">' + TH.icon('alert') + '<div><b>يرجى اختيار المنصة بعناية.</b> كل منصة لها دور في لوائح النشر.</div></div>' +
-          '<div class="plats"></div></div>' +
-        '<div class="step"><div class="step-t"><i>٢</i>وش ينشر؟ <span class="req">*</span></div>' +
+        '<div class="plats hidden"></div>' + // المنصات يحددها فريق الاتصال من لوحة التحكم
+        '<div class="step"><div class="step-t"><i>١</i>وش ينشر؟ <span class="req">*</span></div>' +
           '<div class="drop" tabindex="0" role="button" aria-label="اختر الملفات"><div class="ic">' + TH.icon('upload') + '</div><b>اسحب الصور أو المقاطع هنا أو اضغط للاختيار</b>' +
           '<div class="hint">الصور وPDF حتى 30 م.ب، والمقاطع (MP4، MOV) حتى 700 م.ب</div><input type="file" accept="image/*,video/*,application/pdf,.pdf,.heic,.heif,.mp4,.mov,.m4v" multiple hidden></div>' +
           '<div class="thumbs"></div>' +
           '<div class="album-note hidden">' + TH.icon('info') + '<div>كل الملفات هنا <b>تنشر مع بعض في نفس المنشور</b> (ألبوم بالترتيب). لو تبي كل صورة لحالها، اضغط «إضافة منشور آخر» تحت.</div></div>' +
           '<label class="f">نص المنشور</label><textarea class="in ptext" placeholder="اكتب النص المصاحب للمنشور. الفكرة في السطر الأول، ووسمان إلى ثلاثة فقط."></textarea>' +
-          '<div class="counter"></div><div class="hint">الوسم #ثروة_الشبابية يُضاف تلقائيًا.</div>' +
+          '<div class="counter"></div><div class="hint">الوسم #ثروة_الشبابية يُضاف تلقائيًا. وفريق الاتصال يحدد المنصات المناسبة لمنشورك.</div>' +
           '<div class="note tq hidden ytbox" style="margin-top:12px"><div style="width:100%"><b>يوتيوب: فيديو عادي ولا شورت؟</b><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">' +
             '<label class="tt-tg" style="display:flex;gap:6px;align-items:center;border:1.5px solid var(--line);border-radius:10px;padding:6px 12px;background:#fff;cursor:pointer"><input type="radio" value="video"> فيديو عادي</label>' +
             '<label class="tt-tg" style="display:flex;gap:6px;align-items:center;border:1.5px solid var(--line);border-radius:10px;padding:6px 12px;background:#fff;cursor:pointer"><input type="radio" value="short"> شورت (طولي، 3 دقائق أو أقل)</label></div></div></div>' +
           '<div class="cust hidden"><label class="cust-on"><input type="checkbox" class="custOn"> <b>محتوى مختلف لبعض المنصات</b> <span class="muted small">(اختياري)</span></label>' +
           '<div class="hint" style="margin-top:2px">مثال: صورة طولية لسناب ومربعة لإنستغرام، أو نص أقصر لواتساب.</div><div class="custBox hidden"></div></div></div>' +
-        '<div class="step"><div class="step-t"><i>٣</i>متى ينشر؟ <span class="req">*</span></div>' +
+        '<div class="step"><div class="step-t"><i>٢</i>متى ينشر؟ <span class="req">*</span></div>' +
           '<input class="in ltr pdate" type="datetime-local" required><div class="hint">يُنشر في موعده أو في أقرب دورة نشر بعده (كل 3 ساعات).</div></div>';
       var ytName = 'yt' + P.id;
       P.el.querySelectorAll('.ytbox input').forEach(function (i) { i.name = ytName; });
@@ -676,7 +700,6 @@
         return out;
       };
       P.validate = function (n) {
-        if (!P.sel().length) return 'المنشور ' + n + ': اختر وين ينشر.';
         if (!P.files.length) return 'المنشور ' + n + ': أرفق صورة أو مقطعًا أو PDF.';
         if (!q('.pdate').value) return 'المنشور ' + n + ': حدّد موعد النشر.';
         var ytSel = q('.ytbox input:checked'), fv = P.firstVideo();
@@ -836,16 +859,18 @@
     var KIND = '';
     document.getElementById('kIc1').innerHTML = TH.icon('send');
     document.getElementById('kIc2').innerHTML = TH.icon('edit');
+    document.getElementById('kIc3').innerHTML = TH.icon('list');
     function setKind(k) {
       KIND = k;
       document.querySelectorAll('.kind button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); });
       document.getElementById('pubWrap').classList.toggle('hidden', k !== 'publish');
       document.getElementById('df').classList.toggle('hidden', k !== 'design');
-      document.querySelector('#hero h1') && (document.querySelector('#hero h1').textContent = k === 'design' ? 'طلب تصميم' : 'طلب نشر');
+      document.getElementById('pf').classList.toggle('hidden', k !== 'projects');
+      document.querySelector('#hero h1') && (document.querySelector('#hero h1').textContent = k === 'design' ? 'طلب تصميم' : k === 'projects' ? 'وصف المشاريع' : 'طلب نشر');
       try { history.replaceState(null, '', '#' + k); } catch (e) { /* لا شيء */ }
     }
-    document.querySelectorAll('.kind button').forEach(function (b) { b.onclick = function () { setKind(b.dataset.k); document.getElementById(b.dataset.k === 'design' ? 'df' : 'pubWrap').scrollIntoView({ behavior: 'smooth' }); }; });
-    if (/design/.test(location.hash)) setKind('design'); else if (/publish/.test(location.hash)) setKind('publish');
+    document.querySelectorAll('.kind button').forEach(function (b) { b.onclick = function () { setKind(b.dataset.k); document.getElementById(b.dataset.k === 'design' ? 'df' : b.dataset.k === 'projects' ? 'pf' : 'pubWrap').scrollIntoView({ behavior: 'smooth' }); }; });
+    if (/projects/.test(location.hash)) setKind('projects'); else if (/design/.test(location.hash)) setKind('design'); else if (/publish/.test(location.hash)) setKind('publish');
 
     // ===================== طلب التصميم =====================
     var DTYPES = [
@@ -897,9 +922,72 @@
       document.getElementById('d_sizesBox').classList.toggle('hidden', !sel.length);
     }
     function fillEntities(programs) {
-      var ent = document.getElementById('d_entity'); if (ent.options.length > 1) return;
-      ent.innerHTML = '<option value="">— اختر —</option>' + (programs || []).map(function (x) { return '<option>' + TH.esc(x) + '</option>'; }).join('') + '<option value="__other">جهة أخرى…</option>';
+      ['d_entity', 'p_entity'].forEach(function (eid) {
+        var ent = document.getElementById(eid); if (ent.options.length > 1) return;
+        ent.innerHTML = '<option value="">— اختر —</option>' + (programs || []).map(function (x) { return '<option>' + TH.esc(x) + '</option>'; }).join('') + '<option value="__other">جهة أخرى…</option>';
+      });
     }
+    // ===================== وصف المشاريع =====================
+    var PSEQ = 0;
+    document.getElementById('p_entity').addEventListener('change', function () { document.getElementById('p_entity2').classList.toggle('hidden', this.value !== '__other'); });
+    document.getElementById('p_addIc').innerHTML = '<b style="font-size:20px;line-height:1">+</b>';
+    document.getElementById('p_sendIc').innerHTML = TH.icon('send');
+    function addProject() {
+      var n = ++PSEQ, el = document.createElement('div'); el.className = 'prj'; el.dataset.n = n;
+      el.innerHTML = '<div class="prj-hd"><b>مشروع <span class="pno"></span></b><button type="button" class="rm-post prm">حذف</button></div>' +
+        '<label class="f">اسم المشروع <span class="req">*</span></label><input class="in pt" placeholder="مثال: ملتقى الشباب الصيفي">' +
+        '<label class="f">وصف المشروع <span class="req">*</span></label><textarea class="in pd" style="min-height:100px" placeholder="وش المشروع؟ أهدافه؟ ولمين موجّه؟"></textarea>' +
+        '<label class="f">مواعيد المشروع</label><div class="row2"><div><input class="in ltr ps" type="date"><div class="hint">البداية</div></div><div><input class="in ltr pe" type="date"><div class="hint">النهاية</div></div></div>' +
+        '<textarea class="in pm" style="min-height:60px;margin-top:6px" placeholder="مواعيد مهمة داخل المشروع (اختياري): الافتتاح، الورش، الختام…"></textarea>' +
+        '<label class="f">احتياجات المشروع</label><textarea class="in pn" style="min-height:80px" placeholder="تصاميم، تغطية تصوير، نشر، مطبوعات، هدايا…"></textarea>' +
+        '<div class="pnotes hidden"><label class="f">ملاحظات</label><textarea class="in px" style="min-height:70px" placeholder="أي شي تبي تضيفه"></textarea></div>' +
+        '<button type="button" class="add-mini paddn">+ إضافة ملاحظات</button>';
+      el.querySelector('.paddn').onclick = function () { el.querySelector('.pnotes').classList.remove('hidden'); this.remove(); el.querySelector('.px').focus(); };
+      el.querySelector('.prm').onclick = function () { el.remove(); pRenumber(); };
+      el.querySelector('.ps').addEventListener('change', function () { el.querySelector('.pe').min = this.value; });
+      document.getElementById('p_list').appendChild(el); pRenumber();
+      return el;
+    }
+    function pRenumber() {
+      var all = document.querySelectorAll('#p_list .prj');
+      all.forEach(function (el, i) { el.querySelector('.pno').textContent = i + 1; el.querySelector('.prm').classList.toggle('hidden', all.length < 2); });
+      document.getElementById('p_sendTxt').textContent = all.length > 1 ? 'إرسال وصف المشاريع (' + all.length + ')' : 'إرسال وصف المشروع';
+    }
+    addProject();
+    document.getElementById('p_add').onclick = function () { addProject().scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+    function pErr(m) { var e = document.getElementById('p_err'); e.className = 'err-box note bad'; e.innerHTML = TH.icon('alert') + '<div>' + TH.esc(m) + '</div>'; e.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    var PSENDING = false;
+    document.getElementById('pf').addEventListener('submit', function (e) {
+      e.preventDefault(); if (PSENDING) return;
+      document.getElementById('p_err').className = 'err-box hidden';
+      var v = function (id) { return document.getElementById(id).value.trim(); };
+      var ent = v('p_entity') === '__other' ? v('p_entity2') : v('p_entity');
+      if (!v('p_name')) return pErr('اكتب اسمك.');
+      if (!/^(05\d{8}|5\d{8}|\+?9665\d{8})$/.test(v('p_phone').replace(/[\s-]/g, '').replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }))) return pErr('رقم الجوال غير صحيح. اكتبه بصيغة 05XXXXXXXX.');
+      if (!ent) return pErr('اختر الجهة أو البرنامج.');
+      var projects = [], bad = '';
+      document.querySelectorAll('#p_list .prj').forEach(function (el, i) {
+        var g = function (c) { return el.querySelector(c).value.trim(); };
+        if (!bad && !g('.pt')) bad = 'المشروع ' + (i + 1) + ': اكتب اسم المشروع.';
+        if (!bad && !g('.pd')) bad = 'المشروع ' + (i + 1) + ': اكتب وصف المشروع.';
+        projects.push({ title: g('.pt'), desc: g('.pd'), start: g('.ps'), end: g('.pe'), dates: g('.pm'), needs: g('.pn'), notes: g('.px') });
+      });
+      if (bad) return pErr(bad);
+      if (!projects.length) return pErr('أضف مشروعًا واحدًا على الأقل.');
+      PSENDING = true;
+      var btn = document.getElementById('p_send'); btn.disabled = true; document.getElementById('p_sendTxt').textContent = 'جارٍ الإرسال…';
+      TH.run('submitProjects', { name: v('p_name'), phone: v('p_phone'), entity: ent, projects: projects }).then(function (res) {
+        var d = document.getElementById('done');
+        d.innerHTML = '<div class="big-ic">' + TH.icon('check') + '</div><h2>وصل وصف ' + (res.ids.length > 1 ? 'المشاريع' : 'المشروع') + '</h2><p>' + (res.ids.length > 1 ? 'الأرقام:' : 'الرقم:') + '</p>' +
+          res.ids.map(function (id) { return '<span class="req-no">' + TH.esc(id) + '</span>'; }).join(' ') +
+          '<p class="muted">فريق الاتصال يطّلع عليه ويتواصل معك إذا احتاج تفاصيل.</p><p style="margin-top:20px"><button class="btn primary" onclick="location.reload()">' + TH.icon('send') + 'إرسال جديد</button></p>';
+        document.getElementById('pf').classList.add('hidden'); document.getElementById('kindCard').classList.add('hidden');
+        d.classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' });
+      }).catch(function (err) {
+        PSENDING = false; btn.disabled = false; document.getElementById('p_sendTxt').textContent = 'إعادة المحاولة';
+        pErr(err && err.message || 'تعذر الإرسال، حاول مرة ثانية.');
+      });
+    });
     var DFILES = [];
     (function () {
       var drop = document.getElementById('d_drop'), inp = document.getElementById('d_file');
