@@ -268,14 +268,54 @@
   .task.prog .tk { border-color: var(--tq); background: var(--tq-soft); }
   .tform { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; }
   @media (max-width: 860px) { .tform { grid-template-columns: 1fr 1fr; } .tform .tf-title { grid-column: 1 / -1; } }
+  /* لوحة رئيسية + قائمة جانبية على اليمين */
+  .layout { display: grid; grid-template-columns: 250px 1fr; gap: 20px; align-items: start; margin-top: 16px; }
+  .side { position: sticky; top: 12px; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 10px; display: flex; flex-direction: column; gap: 3px; max-height: calc(100vh - 24px); overflow-y: auto; }
+  .side .sgrp { font-size: 12px; color: var(--muted); padding: 10px 10px 4px; }
+  .side button { border: 0; background: transparent; border-radius: 12px; padding: 10px 12px; cursor: pointer; display: flex; gap: 10px; align-items: center; font: inherit; font-weight: 500; color: var(--navy); text-align: right; width: 100%; }
+  .side button svg { width: 18px; height: 18px; flex: none; }
+  .side button:hover { background: var(--bg); }
+  .side button.on { background: var(--navy); color: #fff; }
+  .side .cnt { margin-inline-start: auto; background: var(--or); color: var(--navy); font-size: 11.5px; font-weight: 700; border-radius: 99px; padding: 0 8px; }
+  .main-col { min-width: 0; }
+  .menu-btn, .side-dim { display: none; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .side { position: fixed; top: 0; right: 0; bottom: 0; width: 270px; max-height: none; border-radius: 18px 0 0 18px; z-index: 60; transform: translateX(105%); transition: transform .2s; box-shadow: -8px 0 30px rgba(20,24,60,.2); padding-top: 18px; }
+    .side.open { transform: none; }
+    .side-dim.open { display: block; position: fixed; inset: 0; background: rgba(20,24,60,.4); z-index: 55; }
+    .menu-btn { display: flex; flex-direction: column; justify-content: center; gap: 4px; position: fixed; top: 12px; right: 12px; z-index: 50; width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--or); padding: 0 11px; box-shadow: 0 4px 14px rgba(20,24,60,.25); cursor: pointer; }
+    .menu-btn span { display: block; height: 2.5px; background: var(--navy); border-radius: 2px; }
+  }
+  .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 760px) { .dash-grid { grid-template-columns: 1fr; } }
+  .dcard { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; }
+  .dcard h3 { margin: 0 0 8px; font-size: 17px; display: flex; gap: 8px; align-items: center; }
+  .dcard h3 svg { width: 20px; height: 20px; flex: none; }
+  .home-stats { grid-template-columns: repeat(6, 1fr) !important; }
+  @media (max-width: 1100px) { .home-stats { grid-template-columns: repeat(3, 1fr) !important; } }
+  .dcard h3 .more { white-space: nowrap; margin-inline-start: auto; font-size: 13px; font-weight: 500; color: #2a8fa0; background: none; border: 0; cursor: pointer; font-family: inherit; }
+  .ditem { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px dashed var(--line); cursor: pointer; }
+  .ditem:first-of-type { border-top: 0; }
+  .ditem .dt { flex: 1; min-width: 0; }
+  .ditem .dt b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ditem .dt span { font-size: 12.5px; color: var(--muted); }
+  .phase-bar { background: linear-gradient(90deg, var(--navy), #3a4290); color: #fff; border-radius: 16px; padding: 14px 18px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .phase-bar b { font-size: 18px; }
+  .phase-bar .pp { display: flex; gap: 6px; margin-inline-start: auto; flex-wrap: wrap; }
+  .phase-bar .pp span { background: rgba(255,255,255,.14); border-radius: 99px; padding: 3px 12px; font-size: 13px; }
+  .phase-bar .pp span.now { background: var(--or); color: var(--navy); font-weight: 700; }
 </style>
 </head>
 <body>
   <div id="hero"></div>
-  <div class="shell">
-    <div class="stats" id="stats"></div>
-    <nav class="tabs" id="tabs"></nav>
-    <div id="panes"><div class="loading"><div class="spin"></div>جارٍ تحميل البيانات…</div></div>
+  <div class="shell layout">
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="القائمة"><span></span><span></span><span></span></button>
+    <div class="side-dim" id="sideDim"></div>
+    <nav class="side" id="tabs"></nav>
+    <div class="main-col">
+      <div id="panes"><div class="loading"><div class="spin"></div>جارٍ تحميل البيانات…</div></div>
+    </div>
   </div>
 
   <script>window.TH_API='https://thrwaapi.1445-shabab.workers.dev';window.TH_FILE='https://thrwaapi.1445-shabab.workers.dev';</script>
@@ -501,7 +541,7 @@
   <script>
     var KEY = decodeURIComponent(location.hash.slice(1));
     if (!KEY) { document.body.innerHTML = '<p style="font-family:sans-serif;text-align:center;padding:40px">الرابط غير صحيح.</p>'; throw new Error('no key'); }
-    var D = null, TAB = 'requests', FILTER = 'active', Q = '';
+    var D = null, TAB = 'home', FILTER = 'active', Q = '';
     var ST_CLS = { 'مقبول': '', 'يحتاج مراجعة': 'warn', 'مرفوض': 'bad', 'قيد النشر': 'navy', 'منشور': 'ok', 'بانتظار نشر يدوي': 'or', 'فشل النشر': 'bad', 'مؤرشف': 'gray' };
     var PN = { instagram: 'إنستغرام', tiktok: 'تيك توك', x: 'X', youtube: 'يوتيوب', linkedin: 'لينكدين', snapchat: 'سناب', whatsapp: 'واتساب', website: 'الموقع', store: 'المتجر' };
     var I = TH.icon, E = TH.esc;
@@ -540,7 +580,7 @@
     function load(silent) {
       if (!D) { try { var c = JSON.parse(localStorage.getItem(CK) || 'null'); if (c && c.k === KEY.slice(0, 6)) { D = c.d; render(); TH.toast('جارٍ تحديث البيانات…'); } } catch (e) { /* بدون كاش */ } }
       LAST_LOAD = Date.now();
-      return TH.run('adminData', KEY).then(function (d) {
+      return TH.run('adminData', KEY, 'v3').then(function (d) {
         checkNew(d); D = d; render();
         try { localStorage.setItem(CK, JSON.stringify({ k: KEY.slice(0, 6), d: d })); } catch (e) { /* المساحة ممتلئة */ }
       }).catch(function (e) {
@@ -561,34 +601,84 @@
       var s = D.stats || {}, open = D.issues.filter(function (i) { return i.state !== 'محلولة'; }).length;
       D.designs = D.designs || [];
       var desNew = D.designs.filter(function (x) { return x.status === 'جديد'; }).length;
-      var tiles = [
-        ['يحتاج مراجعة', s['يحتاج مراجعة'] || 0, 'or', 'يحتاج مراجعة'],
-        ['معتمد بانتظار موعده', s['مقبول'] || 0, 'tq', 'مقبول'],
-        ['بانتظار نشر يدوي', s['بانتظار نشر يدوي'] || 0, 'or', 'بانتظار نشر يدوي'],
-        ['فشل النشر', s['فشل النشر'] || 0, 'bad', 'فشل النشر'],
-        ['منشور', s['منشور'] || 0, 'ok', 'منشور'],
-        ['مشاكل مفتوحة', open, open ? 'bad' : 'ok', '#issues'],
-        ['طلبات تصميم جديدة', desNew, desNew ? 'or' : 'ok', '#designs']
-      ];
-      document.getElementById('stats').innerHTML = tiles.map(function (t) {
-        return '<div class="stat ' + t[2] + '" data-go="' + t[3] + '"><b>' + t[1] + '</b><span>' + t[0] + '</span></div>';
-      }).join('');
-      document.querySelectorAll('.stat').forEach(function (el) {
-        el.onclick = function () { var g = el.dataset.go; if (g === '#issues') setTab('issues'); else if (g === '#designs') setTab('designs'); else { FILTER = g; setTab('requests'); } };
-      });
       var myOpen = (D.tasks || []).filter(function (t) { return t.status !== 'منجزة' && (!ACTOR || t.assignee === ACTOR); }).length;
       var prjNew = (D.projects || []).filter(function (x) { return x.status === 'جديد'; }).length;
-      var tabs = [['tasks', 'check', 'المهام', myOpen], ['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['designs', 'edit', 'طلبات التصاميم', desNew], ['projects', 'book', 'وصف المشاريع', prjNew], ['platforms', 'plug', 'المنصات المرتبطة'], ['issues', 'alert', 'المشاكل', open],
-        ['media', 'film', 'مكتبة المقاطع', D.media.length], ['archive', 'archive', 'الأرشيف'], ['guide', 'book', 'دليل نشر إنستغرام'], ['settings', 'gear', 'الروابط والإعدادات']];
-      document.getElementById('tabs').innerHTML = tabs.map(function (t) {
-        return '<button data-t="' + t[0] + '" class="' + (TAB === t[0] ? 'on' : '') + '">' + I(t[1]) + t[2] + (t[3] ? ' <span class="cnt">' + t[3] + '</span>' : '') + '</button>';
+      var groups = [
+        ['', [['home', 'grid', 'اللوحة الرئيسية'], ['tasks', 'check', 'المهام', myOpen]]],
+        ['الطلبات', [['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['designs', 'edit', 'طلبات التصاميم', desNew], ['projects', 'book', 'وصف المشاريع', prjNew]]],
+        ['النشر', [['platforms', 'plug', 'المنصات المرتبطة'], ['issues', 'alert', 'المشاكل', open], ['media', 'film', 'مكتبة المقاطع'], ['archive', 'archive', 'الأرشيف'], ['guide', 'book', 'دليل نشر إنستغرام']]],
+        ['', [['settings', 'gear', 'الروابط والإعدادات']]]
+      ];
+      document.getElementById('tabs').innerHTML = groups.map(function (g) {
+        return (g[0] ? '<div class="sgrp">' + E(g[0]) + '</div>' : '') + g[1].map(function (t) {
+          return '<button data-t="' + t[0] + '" class="' + (TAB === t[0] ? 'on' : '') + '">' + I(t[1]) + '<span>' + t[2] + '</span>' + (t[3] ? '<span class="cnt">' + t[3] + '</span>' : '') + '</button>';
+        }).join('');
       }).join('');
-      document.querySelectorAll('#tabs button').forEach(function (b) { b.onclick = function () { setTab(b.dataset.t); }; });
+      document.querySelectorAll('#tabs button').forEach(function (b) { b.onclick = function () { setTab(b.dataset.t); sideOpen(false); }; });
       document.getElementById('panes').innerHTML =
-        '<section class="pane" id="p-tasks"></section><section class="pane" id="p-requests"></section><section class="pane" id="p-designs"></section><section class="pane" id="p-projects"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
+        '<section class="pane" id="p-home"></section><section class="pane" id="p-tasks"></section><section class="pane" id="p-requests"></section><section class="pane" id="p-designs"></section><section class="pane" id="p-projects"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
         '<section class="pane" id="p-media"></section><section class="pane" id="p-archive"></section><section class="pane guide" id="p-guide"></section><section class="pane" id="p-settings"></section>';
-      renderTasks(); renderProjects(); renderRequests(); renderDesigns(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
+      renderHome(); renderTasks(); renderProjects(); renderRequests(); renderDesigns(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
       setTab(TAB, true);
+    }
+    // ===================== اللوحة الرئيسية =====================
+    function sideOpen(on) {
+      document.getElementById('tabs').classList.toggle('open', on);
+      document.getElementById('sideDim').classList.toggle('open', on);
+    }
+    document.getElementById('menuBtn').onclick = function () { sideOpen(!document.getElementById('tabs').classList.contains('open')); };
+    document.getElementById('sideDim').onclick = function () { sideOpen(false); };
+    function renderHome() {
+      var el = document.getElementById('p-home'); if (!el || !D) return;
+      var s = D.stats || {}, open = (D.issues || []).filter(function (i) { return i.state !== 'محلولة'; }).length;
+      var phases = D.phases || [], now = phaseNow(phases), cur = phases.filter(function (p) { return p.key === now; })[0];
+      var today = new Date(new Date().toDateString());
+      var mine = (D.tasks || []).filter(function (t) { return t.status !== 'منجزة' && (!ACTOR || t.assignee === ACTOR); })
+        .sort(function (a, b) { return String(a.due || '9').localeCompare(String(b.due || '9')); });
+      var reqs = (D.requests || []).filter(function (r) { return r.status === 'يحتاج مراجعة'; }).slice(0, 5);
+      var des = (D.designs || []).filter(function (r) { return ['جديد', 'مقبول', 'قيد التصميم'].indexOf(r.status) > -1; })
+        .sort(function (a, b) { return String(a.due).localeCompare(String(b.due)); }).slice(0, 5);
+      var prj = (D.projects || []).filter(function (r) { return r.status === 'جديد' || r.status === 'قيد الدراسة'; }).slice(0, 4);
+      var tiles = [
+        ['يحتاج مراجعة', s['يحتاج مراجعة'] || 0, 'or', 'r:يحتاج مراجعة'],
+        ['بانتظار موعده', s['مقبول'] || 0, 'tq', 'r:مقبول'],
+        ['نشر يدوي', s['بانتظار نشر يدوي'] || 0, 'or', 'r:بانتظار نشر يدوي'],
+        ['فشل النشر', s['فشل النشر'] || 0, 'bad', 'r:فشل النشر'],
+        ['تصاميم قيد العمل', des.length, des.length ? 'or' : 'ok', 't:designs'],
+        ['مشاكل مفتوحة', open, open ? 'bad' : 'ok', 't:issues']
+      ];
+      var item = function (go, title, sub, badge) {
+        return '<div class="ditem" data-go="' + E(go) + '"><div class="dt"><b>' + E(title) + '</b><span>' + sub + '</span></div>' + (badge || '') + '</div>';
+      };
+      var hr = new Date().getHours(), hello = hr < 12 ? 'صباح الخير' : 'مساء الخير';
+      el.innerHTML =
+        '<div class="phase-bar"><div><div style="font-size:13px;opacity:.8">' + hello + (ACTOR ? ' يا ' + E(ACTOR) : '') + ' — نحن الآن في</div><b>' + E(cur ? cur.name : '') + '</b>' +
+          (cur ? '<div style="font-size:12.5px;opacity:.8">' + E(phaseWhen(cur)) + '</div>' : '') + '</div>' +
+          '<div class="pp">' + phases.map(function (p) { return '<span class="' + (p.key === now ? 'now' : '') + '">' + E(p.name) + '</span>'; }).join('') + '</div></div>' +
+        '<div class="stats home-stats" style="margin-top:14px">' + tiles.map(function (t) { return '<div class="stat ' + t[2] + '" data-go="' + t[3] + '"><b>' + t[1] + '</b><span>' + t[0] + '</span></div>'; }).join('') + '</div>' +
+        '<div class="dash-grid">' +
+          '<div class="dcard"><h3>' + I('check') + (ACTOR ? 'مهامي' : 'مهام الفريق') + ' <span class="badge gray">' + mine.length + '</span><button class="more" data-go="t:tasks">كل المهام ←</button></h3>' +
+            (mine.length ? mine.slice(0, 6).map(function (t) {
+              var late = t.due && new Date(t.due) < today, isToday = t.due && new Date(t.due).toDateString() === today.toDateString();
+              return item('t:tasks', t.title, (t.assignee || 'الفريق') + (t.due ? ' · ' + E(shortDate(t.due)) : ''), late ? '<span class="badge bad">متأخرة</span>' : isToday ? '<span class="badge or">اليوم</span>' : t.status === 'قيد التنفيذ' ? '<span class="badge tq">قيد التنفيذ</span>' : '');
+            }).join('') : '<div class="muted small">ما عندك مهام مفتوحة 👏</div>') + '</div>' +
+          '<div class="dcard"><h3>' + I('list') + 'طلبات نشر تنتظرك <span class="badge gray">' + (s['يحتاج مراجعة'] || 0) + '</span><button class="more" data-go="r:يحتاج مراجعة">الكل ←</button></h3>' +
+            (reqs.length ? reqs.map(function (r) { return item('q:' + r.id, r.id + ' — ' + r.name, E(r.program || '') + ' · ' + E(TH.date(r.desired, true)), String(r.check || '').indexOf('🚫') > -1 ? '<span class="badge bad">مخالف</span>' : ''); }).join('') : '<div class="muted small">ما فيه طلبات تنتظر المراجعة.</div>') + '</div>' +
+          '<div class="dcard"><h3>' + I('edit') + 'التصاميم <span class="badge gray">' + des.length + '</span><button class="more" data-go="t:designs">الكل ←</button></h3>' +
+            (des.length ? des.map(function (r) { var dl = daysLeft(r.due); return item('d:' + r.id, r.id + ' — ' + r.title, E(r.entity) + ' · ' + E(r.status), dl != null ? '<span class="badge ' + (dl < 0 ? 'bad' : dl <= 3 ? 'or' : 'gray') + '">' + (dl < 0 ? 'متأخر' : dl === 0 ? 'اليوم' : 'باقي ' + daysAr(dl)) + '</span>' : ''); }).join('') : '<div class="muted small">ما فيه تصاميم قيد العمل.</div>') + '</div>' +
+          '<div class="dcard"><h3>' + I('book') + 'وصف المشاريع <span class="badge gray">' + prj.length + '</span><button class="more" data-go="t:projects">الكل ←</button></h3>' +
+            (prj.length ? prj.map(function (p) { return item('p:' + p.id, p.title, E(p.entity) + ' · ' + E(p.status), ''); }).join('') : '<div class="muted small">ما فيه مشاريع جديدة.</div>') + '</div>' +
+        '</div>';
+      el.querySelectorAll('[data-go]').forEach(function (x) {
+        x.onclick = function () {
+          var g = x.dataset.go, k = g.slice(0, 2), v = g.slice(2);
+          if (k === 't:') return setTab(v);
+          if (k === 'r:') { FILTER = v; return setTab('requests'); }
+          if (k === 'q:') { FILTER = 'all'; Q = v; setTab('requests'); var d = document.querySelector('details[data-id="' + v + '"]'); if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth' }); } return; }
+          if (k === 'd:') { var r = findDes(v); if (r) r._open = true; DFILTER = 'all'; setTab('designs'); var dd = document.querySelector('details[data-did="' + v + '"]'); if (dd) dd.scrollIntoView({ behavior: 'smooth' }); return; }
+          if (k === 'p:') { var p = (D.projects || []).filter(function (z) { return z.id === v; })[0]; if (p) p._open = true; PFILTER = 'all'; setTab('projects'); }
+        };
+      });
     }
     function setTab(t, noScroll) {
       TAB = t;
@@ -597,6 +687,8 @@
       if (t === 'requests') renderRequests();
       if (t === 'designs') renderDesigns();
       if (t === 'tasks') renderTasks();
+      if (t === 'home') renderHome();
+      if (!noScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
       if (t === 'projects') renderProjects();
       if (!noScroll) document.getElementById('tabs').scrollIntoView({ behavior: 'smooth' });
     }
@@ -676,11 +768,11 @@
           '<div class="tform"><div class="tf-title"><label class="f">المهمة</label><input class="in" id="tTitle" value="' + E(ed.title || '') + '" placeholder="وش المطلوب؟"></div>' +
           '<div><label class="f">المسؤول</label><select class="in" id="tWho">' + opts(team, ed.assignee != null ? ed.assignee : ACTOR, 'الفريق') + '</select></div>' +
           '<div><label class="f">المرحلة</label><select class="in" id="tPhase">' + opts(phases, ed.phase || now) + '</select></div>' +
-          '<div><label class="f">الموعد</label><input class="in ltr" id="tDue" type="date" value="' + E((ed.due || '').slice(0, 10)) + '"></div>' +
+          '<div><label class="f">التسليم <span class="req">*</span></label><input class="in ltr" id="tDue" type="date" value="' + E((ed.due || '').slice(0, 10)) + '"></div>' +
           '<div><button class="btn primary" id="tSave">' + I('check') + (ed.id ? 'حفظ' : 'إضافة') + '</button></div></div>' +
           '<label class="f">تفاصيل <span class="muted small">(اختياري)</span></label><textarea class="in" id="tDetails" style="min-height:56px">' + E(ed.details || '') + '</textarea>' +
           (TEDIT ? '<div class="actions" style="margin-top:8px"><button class="btn sm ghost" id="tCancel">إلغاء</button>' + (ed.id ? '<button class="btn sm ghost" style="color:var(--bad)" id="tDel">' + I('trash') + 'حذف المهمة</button>' : '') + '</div>' : '') +
-          '<div class="hint">إذا اخترت مسؤول، يوصله إيميل بالمهمة.</div></div>' +
+          '<div class="hint">المسؤول يوصله إيميل بالمهمة، ويوصله تذكير يوم التسليم الساعة 7 الصبح.</div></div>' +
         '<div class="toolbar">' + [['mine', ACTOR ? 'مهامي (' + ACTOR + ')' : 'مهامي'], ['open', 'غير المنجزة'], ['all', 'الكل']].concat(team.map(function (n) { return [n, n]; }))
           .map(function (f) { return '<button class="chip' + (TFILTER === f[0] ? ' on' : '') + '" data-tf="' + E(f[0]) + '">' + E(f[1]) + '</button>'; }).join('') + '</div>' +
         '<div class="phases">' + phases.map(function (p) {
@@ -722,6 +814,7 @@
     function taskSave(b) {
       var v = function (id) { return document.getElementById(id).value.trim(); };
       if (!v('tTitle')) return TH.toast('اكتب المهمة', true);
+      if (!v('tDue')) { document.getElementById('tDue').focus(); return TH.toast('حدد تاريخ التسليم للمهمة', true); }
       var t = { id: (TEDIT && TEDIT.id) || '', title: v('tTitle'), details: v('tDetails'), assignee: v('tWho'), phase: v('tPhase'), due: v('tDue'), status: (TEDIT && TEDIT.status) || 'لم تبدأ' };
       needActor().then(function () { return call(b, 'adminTaskSave', t, ACTOR); }).then(function (nt) {
         var exists = (D.tasks || []).some(function (x) { return x.id === nt.id; });
@@ -831,7 +924,7 @@
         '<div><h3><span class="id">' + E(r.id) + '</span>' + E(r.title) + ' <span class="muted small" style="font-weight:400">— ' + E(r.entity) + ' · ' + E(r.name) + '</span></h3>' +
         '<div class="sub"><span class="badge ' + dueCls + '">' + I('calendar').replace('<svg', '<svg width="12" height="12"') + ' التسليم: ' + E(dDate(r.due)) + E(dueTxt) + '</span>' + (r.priority === 'مستعجل' ? ' <span class="badge bad">مستعجل</span>' : '') + '</div>' +
         '<div class="pchips">' + types.map(function (t) { return '<span class="pchip">' + E(t) + '</span>'; }).join('') + '</div></div>' +
-        '<div class="side"><span class="badge or">' + I('edit').replace('<svg', '<svg width="12" height="12"') + ' تصميم</span><span class="badge ' + (DST_CLS[r.status] || '') + '">' + E(r.status) + '</span><span class="muted small">وصل ' + E(TH.date(r.created, false)) + '</span>' + lastBy(r) + '</div></summary>' +
+        '<div class="side"><span class="badge or">' + I('edit').replace('<svg', '<svg width="12" height="12"') + ' تصميم · أنس</span><span class="badge ' + (DST_CLS[r.status] || '') + '">' + E(r.status) + '</span><span class="muted small">وصل ' + E(TH.date(r.created, false)) + '</span>' + lastBy(r) + '</div></summary>' +
         desBody(r) + '</details>';
     }
     window.dtoggled = function (d) { var r = findDes(d.dataset.did); if (r) r._open = d.open; };
@@ -852,7 +945,9 @@
         (r.status === 'جديد' ? '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">' +
           '<button class="btn ok" data-dact="accept" data-id="' + E(r.id) + '">' + I('check') + 'قبول الطلب</button>' +
           '<button class="btn" style="background:var(--bad-soft);color:var(--bad)" data-dact="reject" data-id="' + E(r.id) + '">' + I('x') + 'رفض</button></div>' : '') +
-        '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" style="background:#25D366;color:#fff" data-dact="wa" data-id="' + E(r.id) + '">' + I('chat') + 'أرسله للمصمم (واتساب)</button></div>' +
+        (r.pub ? '<div class="note tq" style="margin-top:12px"><div><b>بعد ما يجهز: ينشر</b>' + (r.pub.desired ? ' — الموعد المرغوب: ' + E(TH.date(r.pub.desired, true)) : '') + (r.pub.text ? '<div class="small" style="white-space:pre-wrap;margin-top:4px">' + E(r.pub.text) + '</div>' : '') + '</div></div>' : '') +
+        '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn sm" style="background:#25D366;color:#fff" data-dact="wa" data-id="' + E(r.id) + '">' + I('chat') + 'أرسله للمصمم (واتساب)</button>' +
+          (r.status !== 'مرفوض' && r.status !== 'مؤرشف' && !/حُوّل لطلب نشر/.test(r.history || '') ? '<button class="btn sm accent" data-dact="topub" data-id="' + E(r.id) + '">' + I('send') + 'التصميم جاهز — حوّله للنشر</button>' : '') + '</div>' +
         '<div style="margin-top:16px;border-top:1px dashed var(--line);padding-top:12px"><div class="row2"><div><label class="f">الحالة</label><select class="in" data-dst="' + E(r.id) + '">' +
           sts.map(function (x) { return '<option' + (x === r.status ? ' selected' : '') + '>' + E(x) + '</option>'; }).join('') + '</select></div>' +
           '<div><label class="f">رابط التصميم النهائي</label><input class="in ltr" data-dres="' + E(r.id) + '" placeholder="https://drive.google.com/…" value="' + E(r.result || '') + '"></div></div>' +
@@ -962,6 +1057,33 @@
       };
       if (pb) setTimeout(function () { pb.click(); }, 50);
     }
+
+    // ===================== التصميم جاهز ← طلب نشر =====================
+    function designToPub(r) {
+      if (!r) return;
+      var m = document.createElement('div'); m.className = 'modal';
+      m.innerHTML = '<div class="mbox"><h3 style="margin:0 0 4px">التصميم جاهز — ' + E(r.id) + '</h3><div class="muted small">ارفع التصميم النهائي، وينشأ طلب نشر باسم صاحب الطلب ويوصل لمحمد للمراجعة.</div>' +
+        '<div class="appstep"><b>١) ملفات التصميم النهائي</b><input type="file" data-x="f" accept="image/*,video/*,application/pdf" multiple class="in"><div class="small muted" data-x="st"></div></div>' +
+        '<div class="appstep"><b>٢) النص والموعد</b><div class="small">' + E((r.pub && r.pub.text) || r.title) + '</div><div class="small muted">' + (r.pub && r.pub.desired ? 'الموعد: ' + E(TH.date(r.pub.desired, true)) : 'بدون موعد — ينشر في أقرب دورة بعد الاعتماد') + '</div><div class="hint">تقدر تعدّل النص والمنصات من الطلب نفسه بعد ما ينشأ.</div></div>' +
+        '<div class="actions"><button class="btn primary" data-x="go">' + I('send') + 'أنشئ طلب النشر</button><button class="btn ghost" data-x="close">إغلاق</button></div></div>';
+      document.body.appendChild(m);
+      var inp = m.querySelector('[data-x=f]'), st = m.querySelector('[data-x=st]'), go = m.querySelector('[data-x=go]');
+      m.querySelector('[data-x=close]').onclick = function () { m.remove(); };
+      go.onclick = function () {
+        var list = Array.prototype.slice.call(inp.files || []);
+        if (!list.length) return TH.toast('اختر ملف التصميم النهائي', true);
+        go.disabled = true; var out = [], ch = Promise.resolve();
+        list.forEach(function (f, i) {
+          ch = ch.then(function () {
+            return TH.upload(f, 'request', '', function (p) { st.textContent = 'رفع ' + (i + 1) + ' من ' + list.length + ' — ' + Math.round(p * 100) + '%'; })
+              .then(function (x) { out.push({ id: x.id, name: f.name, mime: f.type || TH.guessMime(f.name), size: f.size }); });
+          });
+        });
+        ch.then(function () { st.textContent = 'جارٍ إنشاء طلب النشر…'; return TH.run('adminDesignToPublish', KEY, r.id, out, ACTOR); })
+          .then(function (res) { m.remove(); TH.toast('أُنشئ طلب النشر ' + res.reqId + ' — حدد المنصات واعتمده'); load(true); })
+          .catch(function (e) { go.disabled = false; st.textContent = ''; TH.toast(e.message, true); });
+      };
+    }
     function replaceDes(r) {
       if (!r) return;
       r._open = true;
@@ -977,6 +1099,7 @@
     function desAct(b) {
       var id = b.dataset.id, a = b.dataset.dact;
       if (a === 'wa') return designerWA(findDes(id));
+      if (a === 'topub') return needActor().then(function () { designToPub(findDes(id)); }, function () {});
       if (!ACTOR && a !== 'ai') return needActor().then(function () { desAct(b); }, function () {});
       if (a === 'accept') return call(b, 'adminDesignUpdate', id, 'مقبول', null, null, ACTOR, 'قبول').then(function (r) { TH.toast('قُبل الطلب'); replaceDes(r); });
       if (a === 'reject') {
@@ -1193,7 +1316,7 @@
         '<div><h3><span class="id">' + E(r.id) + '</span>' + E(r.program || 'بدون برنامج') + ' <span class="muted small" style="font-weight:400">— ' + E(r.name) + '</span></h3>' +
         '<div class="sub">' + I('calendar').replace('<svg', '<svg width="13" height="13" style="vertical-align:-2px"') + ' موعد النشر: ' + E(TH.date(r.desired)) + '</div>' +
         '<div class="txt">' + E(r.text) + '</div><div class="pchips">' + chips + '</div></div>' +
-        '<div class="side"><span class="badge tq">' + I('send').replace('<svg', '<svg width="12" height="12"') + ' نشر</span>' + (String(r.check || '').indexOf('🚫') > -1 ? '<span class="badge bad">' + I('alert').replace('<svg', '<svg width="12" height="12"') + ' مخالف للوائح</span>' : '') + '<span class="badge ' + (ST_CLS[r.status] || '') + '">' + E(r.status) + '</span><span class="muted small">وصل ' + E(TH.date(r.created, false)) + '</span></div></summary>' +
+        '<div class="side"><span class="badge tq">' + I('send').replace('<svg', '<svg width="12" height="12"') + ' نشر · محمد</span>' + (String(r.check || '').indexOf('🚫') > -1 ? '<span class="badge bad">' + I('alert').replace('<svg', '<svg width="12" height="12"') + ' مخالف للوائح</span>' : '') + '<span class="badge ' + (ST_CLS[r.status] || '') + '">' + E(r.status) + '</span><span class="muted small">وصل ' + E(TH.date(r.created, false)) + '</span></div></summary>' +
         reqBody(r) + '</details>';
     }
     window.toggled = function (d) { var r = findReq(d.dataset.id); if (r) r._open = d.open; };

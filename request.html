@@ -190,11 +190,20 @@
   .done-list { text-align: right; max-width: 600px; margin: 10px auto 0; }
   .done-item { border: 1.5px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-top: 10px; }
   .done-item .req-no { font-size: 17px; padding: 2px 12px; margin: 0 0 6px; }
-  .kind { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .kind { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 760px) { .kind { grid-template-columns: 1fr; } }
   .prj { border: 2px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; background: #fff; }
   .prj-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
   .prj-hd b { font-size: 17px; }
+  .drow { border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 8px; background: #FAFBFE; }
+  .drow-top { display: flex; gap: 8px; align-items: center; }
+  .drow-top .dl { flex: 1; }
+  .cal { display: inline-flex; border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; flex: none; }
+  .cal button { font: inherit; font-size: 13px; border: 0; background: #fff; padding: 7px 10px; cursor: pointer; color: var(--navy); }
+  .cal button.on { background: var(--navy); color: #fff; }
+  .drm { font: inherit; border: 0; background: none; color: var(--bad); cursor: pointer; font-size: 20px; line-height: 1; padding: 0 4px; }
+  .hsel { display: grid; grid-template-columns: 1fr 1.6fr 1.2fr; gap: 6px; margin-top: 8px; }
+  .dconv { font-size: 12.5px; color: var(--muted); margin-top: 6px; min-height: 1em; }
   .add-mini { font: inherit; border: 1.5px dashed var(--navy); background: transparent; color: var(--navy); border-radius: 12px; padding: 8px 14px; cursor: pointer; margin-top: 10px; display: inline-flex; gap: 6px; align-items: center; }
   .add-mini svg { width: 16px; height: 16px; }
   .kind button { font: inherit; text-align: right; display: flex; gap: 12px; align-items: center; padding: 18px 16px; border-radius: 16px; border: 2px solid var(--line); background: #fff; color: var(--navy); cursor: pointer; transition: all .15s; }
@@ -220,9 +229,15 @@
     <section class="card" id="kindCard">
       <h2 class="sec-title"><span class="st"></span>وش طلبك؟</h2>
       <div class="kind">
-        <button type="button" data-k="publish"><span class="ic" id="kIc1"></span><div><b>طلب نشر</b><span>منشور جاهز ينزل في حسابات ثروة</span></div></button>
-        <button type="button" data-k="design"><span class="ic" id="kIc2"></span><div><b>طلب تصميم</b><span>تصميم للمنصات أو مطبوعات أو هدايا</span></div></button>
+        <button type="button" data-k="pd"><span class="ic" id="kIc1"></span><div><b>طلب نشر وتصميم</b><span>منشور جاهز للنشر، أو تحتاج تصميم وبعدها ينشر</span></div></button>
         <button type="button" data-k="projects"><span class="ic" id="kIc3"></span><div><b>وصف المشاريع</b><span>اسم المشروع ووصفه ومواعيده واحتياجاته</span></div></button>
+      </div>
+    </section>
+    <section class="card hidden" id="readyCard">
+      <h2 class="sec-title"><span class="st"></span>التصميم جاهز؟</h2>
+      <div class="kind" style="grid-template-columns:1fr 1fr">
+        <button type="button" data-r="publish"><span class="ic" id="rIc1"></span><div><b>نعم، جاهز</b><span>أرفعه ويروح للنشر مباشرة</span></div></button>
+        <button type="button" data-r="design"><span class="ic" id="rIc2"></span><div><b>لا، أحتاج تصميم</b><span>نصممه لك، وبعد ما يجهز ينشر</span></div></button>
       </div>
     </section>
     <div id="pubWrap" class="hidden">
@@ -302,6 +317,18 @@
         <div class="drop" id="d_drop" tabindex="0" role="button" style="padding:16px"><div class="ic" id="d_upIc"></div><b>اضغط لإرفاق صور أو PDF</b><div class="hint">حتى 30 م.ب للملف</div>
           <input type="file" id="d_file" accept="image/*,application/pdf,.pdf" multiple hidden></div>
         <div class="thumbs" id="d_thumbs"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="sec-title"><span class="st"></span>بعد ما يجهز التصميم</h2>
+        <div class="chips2"><label><input type="checkbox" id="d_pub" checked> انشره في حسابات ثروة بعد ما يجهز</label></div>
+        <div id="d_pubBox">
+          <label class="f">نص المنشور <span class="muted small">(اختياري — تقدر تكتبه الحين أو نكتبه إحنا)</span></label>
+          <textarea class="in" id="d_pubText" style="min-height:90px" placeholder="النص اللي ينزل مع التصميم في المنصات"></textarea>
+          <label class="f">موعد النشر المرغوب</label>
+          <input class="in ltr" id="d_pubDate" type="datetime-local">
+          <div class="hint">فريق الاتصال يحدد المنصات المناسبة ويعتمد المنشور.</div>
+        </div>
       </section>
 
       <div class="err-box hidden" id="d_err"></div>
@@ -788,24 +815,22 @@
         chain = chain.then(function () {
           if (P.result) { results.push(P.result); return; }
           return uploadPost(P, i + 1, total, function (p, t) { setProgress((i + p) / total, t); }).then(function () {
-            setProgress((i + 1) / total, 'المنشور ' + (i + 1) + ' من ' + total + ' — فحص على لوائح النشر…');
+            setProgress((i + 1) / total, 'المنشور ' + (i + 1) + ' من ' + total + ' — فحص وتسجيل…');
             var payload = {
               name: name, phone: phone, program: document.getElementById('program').value,
               text: P.q('.ptext').value, desired: P.q('.pdate').value, platforms: P.sel(), people: 'no', consent: false,
               files: P.files.map(function (it) { return it.uploaded; }), custom: P.customPayload(), postIndex: i + 1, postTotal: total
             };
-            var dry = Object.assign({}, payload, { dryRun: true });
-            return TH.run('submitRequest', dry).then(function (chk) {
-              var v = (chk && chk.violations) || [];
-              var sig = JSON.stringify(v);
-              if (!v.length || P.ackSig === sig) return;
-              return violationDialog(i + 1, total, v).then(function (go) {
+            // طلب واحد: يفحص ويحفظ. إذا فيه مخالفة يرجّع التنبيه بدون حفظ ونسأل صاحب الطلب
+            var send = function (ack) { return TH.run('submitRequest', Object.assign({}, payload, { checkFirst: true, ackViolation: !!ack })); };
+            return send(!!P.ackSig).then(function (res) {
+              if (!res || !res.needsAck) return res;
+              return violationDialog(i + 1, total, res.violations || []).then(function (go) {
                 if (!go) { P.el.scrollIntoView({ behavior: 'smooth' }); var e2 = new Error('عدّل المنشور ' + (i + 1) + ' حسب التنبيهات، ثم اضغط «إرسال الطلب». (الملفات المرفوعة محفوظة)'); e2.soft = true; throw e2; }
-                P.ackSig = sig;
+                P.ackSig = '1';
+                setProgress((i + 1) / total, 'المنشور ' + (i + 1) + ' من ' + total + ' — تسجيل الطلب…');
+                return send(true);
               });
-            }).then(function () {
-              setProgress((i + 1) / total, 'المنشور ' + (i + 1) + ' من ' + total + ' — تسجيل الطلب…');
-              return TH.run('submitRequest', Object.assign(payload, { ackViolation: !!P.ackSig }));
             });
           }).then(function (res) { P.result = res; results.push(res); });
         });
@@ -858,18 +883,22 @@
     // ===================== اختيار نوع الطلب =====================
     var KIND = '';
     document.getElementById('kIc1').innerHTML = TH.icon('send');
-    document.getElementById('kIc2').innerHTML = TH.icon('edit');
+    document.getElementById('rIc1').innerHTML = TH.icon('check'); document.getElementById('rIc2').innerHTML = TH.icon('edit');
     document.getElementById('kIc3').innerHTML = TH.icon('list');
     function setKind(k) {
       KIND = k;
-      document.querySelectorAll('.kind button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); });
+      var top = k === 'projects' ? 'projects' : 'pd';
+      document.querySelectorAll('#kindCard .kind button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === top); });
+      document.querySelectorAll('#readyCard .kind button').forEach(function (b) { b.classList.toggle('on', b.dataset.r === k); });
+      document.getElementById('readyCard').classList.toggle('hidden', top !== 'pd');
       document.getElementById('pubWrap').classList.toggle('hidden', k !== 'publish');
       document.getElementById('df').classList.toggle('hidden', k !== 'design');
       document.getElementById('pf').classList.toggle('hidden', k !== 'projects');
-      document.querySelector('#hero h1') && (document.querySelector('#hero h1').textContent = k === 'design' ? 'طلب تصميم' : k === 'projects' ? 'وصف المشاريع' : 'طلب نشر');
+      document.querySelector('#hero h1') && (document.querySelector('#hero h1').textContent = k === 'design' ? 'طلب تصميم ثم نشر' : k === 'projects' ? 'وصف المشاريع' : k === 'publish' ? 'طلب نشر' : 'طلب نشر وتصميم');
       try { history.replaceState(null, '', '#' + k); } catch (e) { /* لا شيء */ }
     }
-    document.querySelectorAll('.kind button').forEach(function (b) { b.onclick = function () { setKind(b.dataset.k); document.getElementById(b.dataset.k === 'design' ? 'df' : b.dataset.k === 'projects' ? 'pf' : 'pubWrap').scrollIntoView({ behavior: 'smooth' }); }; });
+    document.querySelectorAll('#kindCard .kind button').forEach(function (b) { b.onclick = function () { setKind(b.dataset.k); document.getElementById(b.dataset.k === 'projects' ? 'pf' : 'readyCard').scrollIntoView({ behavior: 'smooth' }); }; });
+    document.querySelectorAll('#readyCard .kind button').forEach(function (b) { b.onclick = function () { setKind(b.dataset.r); document.getElementById(b.dataset.r === 'design' ? 'df' : 'pubWrap').scrollIntoView({ behavior: 'smooth' }); }; });
     if (/projects/.test(location.hash)) setKind('projects'); else if (/design/.test(location.hash)) setKind('design'); else if (/publish/.test(location.hash)) setKind('publish');
 
     // ===================== طلب التصميم =====================
@@ -882,6 +911,7 @@
       var p = function (n) { return ('0' + n).slice(-2); }, t = new Date();
       var today = t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate());
       document.getElementById('d_due').min = today;
+      document.getElementById('d_pub').addEventListener('change', function () { document.getElementById('d_pubBox').classList.toggle('hidden', !this.checked); });
       document.getElementById('d_upIc').innerHTML = TH.icon('upload');
       document.getElementById('d_sendIc').innerHTML = TH.icon('send');
       document.getElementById('d_types').innerHTML = DTYPES.map(function (g) {
@@ -937,16 +967,93 @@
       el.innerHTML = '<div class="prj-hd"><b>مشروع <span class="pno"></span></b><button type="button" class="rm-post prm">حذف</button></div>' +
         '<label class="f">اسم المشروع <span class="req">*</span></label><input class="in pt" placeholder="مثال: ملتقى الشباب الصيفي">' +
         '<label class="f">وصف المشروع <span class="req">*</span></label><textarea class="in pd" style="min-height:100px" placeholder="وش المشروع؟ أهدافه؟ ولمين موجّه؟"></textarea>' +
-        '<label class="f">مواعيد المشروع</label><div class="row2"><div><input class="in ltr ps" type="date"><div class="hint">البداية</div></div><div><input class="in ltr pe" type="date"><div class="hint">النهاية</div></div></div>' +
-        '<textarea class="in pm" style="min-height:60px;margin-top:6px" placeholder="مواعيد مهمة داخل المشروع (اختياري): الافتتاح، الورش، الختام…"></textarea>' +
+        '<label class="f">مواعيد المشروع</label><div class="pdates"></div><button type="button" class="add-mini padd">+ إضافة موعد</button>' +
         '<label class="f">احتياجات المشروع</label><textarea class="in pn" style="min-height:80px" placeholder="تصاميم، تغطية تصوير، نشر، مطبوعات، هدايا…"></textarea>' +
         '<div class="pnotes hidden"><label class="f">ملاحظات</label><textarea class="in px" style="min-height:70px" placeholder="أي شي تبي تضيفه"></textarea></div>' +
         '<button type="button" class="add-mini paddn">+ إضافة ملاحظات</button>';
       el.querySelector('.paddn').onclick = function () { el.querySelector('.pnotes').classList.remove('hidden'); this.remove(); el.querySelector('.px').focus(); };
       el.querySelector('.prm').onclick = function () { el.remove(); pRenumber(); };
-      el.querySelector('.ps').addEventListener('change', function () { el.querySelector('.pe').min = this.value; });
+      el.querySelector('.padd').onclick = function () { addDate(el, ''); };
+      addDate(el, 'بداية المشروع'); addDate(el, 'نهاية المشروع');
       document.getElementById('p_list').appendChild(el); pRenumber();
       return el;
+    }
+    // ===================== مواعيد المشروع (ميلادي أو هجري، أكثر من موعد) =====================
+    var HMONTHS = ['محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر', 'جمادى الأولى', 'جمادى الآخرة', 'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'];
+    var HFMT = null, HPARTS = null;
+    try {
+      HFMT = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+      HPARTS = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' });
+    } catch (e) { /* المتصفح ما يدعم التقويم الهجري */ }
+    function ymdUTC(ymd) { var p = ymd.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
+    function toYmd(d) { return d.toISOString().slice(0, 10); }
+    function hijriOf(ymd) {
+      if (!HFMT || !ymd) return null;
+      var d = ymdUTC(ymd), o = {};
+      HPARTS.formatToParts(d).forEach(function (x) { if (x.type !== 'literal') o[x.type] = parseInt(x.value, 10); });
+      return { d: o.day, m: o.month, y: o.year, text: HFMT.format(d).replace(/\s*هـ$/, '') + ' هـ' };
+    }
+    function gregOfHijri(hd, hm, hy) {
+      if (!HPARTS) return '';
+      // تقدير تقريبي ثم بحث دقيق حول التاريخ
+      var approx = Date.UTC(622, 6, 16) + ((hy - 1) * 354.367 + (hm - 1) * 29.5306 + (hd - 1)) * 86400000;
+      for (var k = -45; k <= 45; k++) {
+        var d = new Date(approx + k * 86400000), h = hijriOf(toYmd(d));
+        if (h && h.d === hd && h.m === hm && h.y === hy) return toYmd(d);
+      }
+      return '';
+    }
+    function gregText(ymd) { return ymdUTC(ymd).toLocaleDateString('ar-SA-u-ca-gregory', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) + ' م'; }
+    function addDate(el, label) {
+      var box = el.querySelector('.pdates'), row = document.createElement('div'); row.className = 'drow';
+      var nowH = hijriOf(toYmd(new Date())) || { y: 1448 };
+      var yrs = ''; for (var y = nowH.y - 1; y <= nowH.y + 3; y++) yrs += '<option value="' + y + '"' + (y === nowH.y ? ' selected' : '') + '>' + y + ' هـ</option>';
+      var days = ''; for (var d = 1; d <= 30; d++) days += '<option>' + d + '</option>';
+      row.innerHTML = '<div class="drow-top"><input class="in dl" placeholder="وش الموعد؟ (مثال: الافتتاح، ورشة، الختام)" value="' + TH.esc(label) + '">' +
+        '<div class="cal"><button type="button" data-c="g" class="on">ميلادي</button><button type="button" data-c="h"' + (HFMT ? '' : ' disabled') + '>هجري</button></div>' +
+        '<button type="button" class="drm" title="حذف">×</button></div>' +
+        '<input class="in ltr dg" type="date" style="margin-top:8px">' +
+        '<div class="hsel hidden"><select class="in hd">' + days + '</select><select class="in hm">' + HMONTHS.map(function (m, i) { return '<option value="' + (i + 1) + '">' + m + '</option>'; }).join('') + '</select><select class="in hy">' + yrs + '</select></div>' +
+        '<div class="dconv"></div>';
+      box.appendChild(row);
+      var dg = row.querySelector('.dg'), conv = row.querySelector('.dconv'), hs = row.querySelector('.hsel');
+      function show() {
+        var g = row.dataset.ymd || '';
+        if (!g) { conv.textContent = ''; return; }
+        var h = hijriOf(g);
+        conv.textContent = row.dataset.cal === 'h' ? '= ' + gregText(g) : (h ? '= ' + h.text : '');
+      }
+      dg.addEventListener('change', function () { row.dataset.ymd = dg.value; show(); });
+      function fromH() {
+        var g = gregOfHijri(+row.querySelector('.hd').value, +row.querySelector('.hm').value, +row.querySelector('.hy').value);
+        row.dataset.ymd = g; conv.textContent = g ? '' : 'التاريخ الهجري غير صحيح'; if (g) { dg.value = g; show(); }
+      }
+      hs.addEventListener('change', fromH);
+      row.querySelectorAll('[data-c]').forEach(function (b) {
+        b.onclick = function () {
+          row.dataset.cal = b.dataset.c;
+          row.querySelectorAll('[data-c]').forEach(function (x) { x.classList.toggle('on', x === b); });
+          var isH = b.dataset.c === 'h';
+          dg.classList.toggle('hidden', isH); hs.classList.toggle('hidden', !isH);
+          if (isH && row.dataset.ymd) { var h = hijriOf(row.dataset.ymd); if (h) { row.querySelector('.hd').value = h.d; row.querySelector('.hm').value = h.m; row.querySelector('.hy').value = h.y; } }
+          show();
+        };
+      });
+      row.querySelector('.drm').onclick = function () { row.remove(); };
+      if (!label) row.querySelector('.dl').focus();
+      return row;
+    }
+    function collectDates(el) {
+      var list = [], bad = '';
+      el.querySelectorAll('.drow').forEach(function (row) {
+        var g = row.dataset.ymd || '', lab = row.querySelector('.dl').value.trim();
+        if (!g && row.dataset.cal === 'h') { /* ما اختار */ }
+        if (!g) return;
+        var h = hijriOf(g);
+        list.push({ label: lab || 'موعد', ymd: g, line: (lab || 'موعد') + ': ' + gregText(g) + (h ? ' — ' + h.text : '') });
+      });
+      list.sort(function (a, b) { return a.ymd.localeCompare(b.ymd); });
+      return { bad: bad, start: list.length ? list[0].ymd : '', end: list.length > 1 ? list[list.length - 1].ymd : '', text: list.map(function (x) { return x.line; }).join('\n') };
     }
     function pRenumber() {
       var all = document.querySelectorAll('#p_list .prj');
@@ -970,7 +1077,9 @@
         var g = function (c) { return el.querySelector(c).value.trim(); };
         if (!bad && !g('.pt')) bad = 'المشروع ' + (i + 1) + ': اكتب اسم المشروع.';
         if (!bad && !g('.pd')) bad = 'المشروع ' + (i + 1) + ': اكتب وصف المشروع.';
-        projects.push({ title: g('.pt'), desc: g('.pd'), start: g('.ps'), end: g('.pe'), dates: g('.pm'), needs: g('.pn'), notes: g('.px') });
+        var ds = collectDates(el);
+        if (!bad && ds.bad) bad = 'المشروع ' + (i + 1) + ': ' + ds.bad;
+        projects.push({ title: g('.pt'), desc: g('.pd'), start: ds.start, end: ds.end, dates: ds.text, needs: g('.pn'), notes: g('.px') });
       });
       if (bad) return pErr(bad);
       if (!projects.length) return pErr('أضف مشروعًا واحدًا على الأقل.');
@@ -1042,7 +1151,7 @@
         return TH.run('submitDesign', {
           name: v('d_name'), phone: v('d_phone'), entity: ent, types: types, title: v('d_title'), details: v('d_details'),
           sizes: v('d_sizes'), priority: v('d_priority'), logos: checked('#d_logos').join('، '),
-          due: v('d_due'), files: DFILES.map(function (it) { return it.up; })
+          due: v('d_due'), publish: document.getElementById('d_pub').checked, pubText: v('d_pubText'), pubDesired: v('d_pubDate'), files: DFILES.map(function (it) { return it.up; })
         });
       }).then(function (res) {
         bar.querySelector('i').style.width = '100%';
