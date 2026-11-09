@@ -386,6 +386,7 @@
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
     download: '<path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/>',
     share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
     grid: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'
   };
   TH.icon = function (name, cls) {
@@ -604,7 +605,7 @@
       var myOpen = (D.tasks || []).filter(function (t) { return t.status !== 'منجزة' && (!ACTOR || t.assignee === ACTOR); }).length;
       var prjNew = (D.projects || []).filter(function (x) { return x.status === 'جديد'; }).length;
       var groups = [
-        ['', [['home', 'grid', 'اللوحة الرئيسية'], ['tasks', 'check', 'المهام', myOpen]]],
+        ['', [['home', 'grid', 'اللوحة الرئيسية'], ['goals', 'target', 'الأهداف'], ['tasks', 'check', 'المهام', myOpen]]],
         ['الطلبات', [['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['designs', 'edit', 'طلبات التصاميم', desNew], ['projects', 'book', 'وصف المشاريع', prjNew]]],
         ['النشر', [['platforms', 'plug', 'المنصات المرتبطة'], ['issues', 'alert', 'المشاكل', open], ['media', 'film', 'مكتبة المقاطع'], ['archive', 'archive', 'الأرشيف'], ['guide', 'book', 'دليل نشر إنستغرام']]],
         ['', [['settings', 'gear', 'الروابط والإعدادات']]]
@@ -616,9 +617,9 @@
       }).join('');
       document.querySelectorAll('#tabs button').forEach(function (b) { b.onclick = function () { setTab(b.dataset.t); sideOpen(false); }; });
       document.getElementById('panes').innerHTML =
-        '<section class="pane" id="p-home"></section><section class="pane" id="p-tasks"></section><section class="pane" id="p-requests"></section><section class="pane" id="p-designs"></section><section class="pane" id="p-projects"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
+        '<section class="pane" id="p-home"></section><section class="pane" id="p-goals"></section><section class="pane" id="p-tasks"></section><section class="pane" id="p-requests"></section><section class="pane" id="p-designs"></section><section class="pane" id="p-projects"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
         '<section class="pane" id="p-media"></section><section class="pane" id="p-archive"></section><section class="pane guide" id="p-guide"></section><section class="pane" id="p-settings"></section>';
-      renderHome(); renderTasks(); renderProjects(); renderRequests(); renderDesigns(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
+      renderHome(); renderGoals(); renderTasks(); renderProjects(); renderRequests(); renderDesigns(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
       setTab(TAB, true);
     }
     // ===================== اللوحة الرئيسية =====================
@@ -656,6 +657,10 @@
           (cur ? '<div style="font-size:12.5px;opacity:.8">' + E(phaseWhen(cur)) + '</div>' : '') + '</div>' +
           '<div class="pp">' + phases.map(function (p) { return '<span class="' + (p.key === now ? 'now' : '') + '">' + E(p.name) + '</span>'; }).join('') + '</div></div>' +
         '<div class="stats home-stats" style="margin-top:14px">' + tiles.map(function (t) { return '<div class="stat ' + t[2] + '" data-go="' + t[3] + '"><b>' + t[1] + '</b><span>' + t[0] + '</span></div>'; }).join('') + '</div>' +
+        ((D.goals || []).length ? '<div class="dcard" style="margin-top:14px"><h3>' + I('target') + 'الأهداف <span class="badge gray">' + D.goals.length + '</span><button class="more" data-go="t:goals">كل الأهداف ←</button></h3>' +
+          '<div class="dash-grid" style="margin-top:0">' + D.goals.filter(function (g) { return g.status !== 'تحقق'; }).slice(0, 4).map(function (g) {
+            return '<div class="ditem" data-go="t:goals" style="display:block;border-top:0"><div style="display:flex;gap:8px"><b style="flex:1;font-weight:500">' + E(g.title) + '</b><span class="badge ' + (GST_CLS[g.status] || '') + '">' + E(g.status) + '</span></div>' + goalBar(g) + '</div>';
+          }).join('') + '</div></div>' : '') +
         '<div class="dash-grid">' +
           '<div class="dcard"><h3>' + I('check') + (ACTOR ? 'مهامي' : 'مهام الفريق') + ' <span class="badge gray">' + mine.length + '</span><button class="more" data-go="t:tasks">كل المهام ←</button></h3>' +
             (mine.length ? mine.slice(0, 6).map(function (t) {
@@ -680,6 +685,73 @@
         };
       });
     }
+    // ===================== الأهداف =====================
+    var GEDIT = null;
+    var GST_CLS = { 'لم يبدأ': 'gray', 'على المسار': 'tq', 'متأخر': 'bad', 'تحقق': 'ok' };
+    function goalProgress(g) {
+      var tasks = (D.tasks || []).filter(function (t) { return t.goal === g.id; });
+      var done = tasks.filter(function (t) { return t.status === 'منجزة'; }).length;
+      var pct = null, label = '';
+      if (g.target !== '' && g.target != null && Number(g.target) > 0 && g.actual !== '' && g.actual != null) {
+        pct = Math.round(Math.min(100, (Number(g.actual) / Number(g.target)) * 100)); label = g.actual + ' من ' + g.target + (g.kpi ? ' — ' + g.kpi : '');
+      } else if (tasks.length) {
+        pct = Math.round((done / tasks.length) * 100); label = 'أُنجز ' + done + ' من ' + tasks.length + ' مهام';
+      }
+      if (g.status === 'تحقق') pct = 100;
+      return { pct: pct, label: label, tasks: tasks, done: done };
+    }
+    function goalBar(g) {
+      var p = goalProgress(g), c = g.status === 'متأخر' ? 'var(--bad)' : g.status === 'تحقق' ? '#2e9d6a' : 'var(--tq)';
+      return '<div style="background:var(--bg);border-radius:99px;height:9px;overflow:hidden;margin-top:6px"><i style="display:block;height:100%;width:' + (p.pct || 0) + '%;background:' + c + ';border-radius:99px"></i></div>' +
+        '<div class="small muted" style="margin-top:3px">' + (p.pct != null ? p.pct + '% · ' : '') + E(p.label || 'حدّث المحقق أو اربط مهام بالهدف') + '</div>';
+    }
+    function renderGoals() {
+      var el = document.getElementById('p-goals'); if (!el || !D) return;
+      var goals = D.goals || [], phases = D.phases || [], team = D.team || ['محمد', 'أنس'], sts = D.goalStatuses || ['لم يبدأ', 'على المسار', 'متأخر', 'تحقق'];
+      var ed = GEDIT || {}, now = phaseNow(phases);
+      var opts = function (list, cur, empty) { return (empty ? '<option value="">' + empty + '</option>' : '') + list.map(function (x) { var v = x.key || x, n = x.name || x; return '<option value="' + E(v) + '"' + (v === cur ? ' selected' : '') + '>' + E(n) + '</option>'; }).join(''); };
+      el.innerHTML =
+        '<div class="card" style="margin-bottom:14px"><h3 style="margin:0 0 10px">' + (ed.id ? 'تعديل الهدف ' + E(ed.id) : 'إضافة هدف') + '</h3>' +
+          '<label class="f">الهدف <span class="req">*</span></label><input class="in" id="gTitle" value="' + E(ed.title || '') + '" placeholder="مثال: رفع التفاعل في حساب إنستغرام">' +
+          '<div class="tform" style="margin-top:8px"><div class="tf-title"><label class="f">المؤشر (كيف نقيسه؟)</label><input class="in" id="gKpi" value="' + E(ed.kpi || '') + '" placeholder="مثال: عدد المتابعين، نسبة التفاعل %"></div>' +
+            '<div><label class="f">المستهدف</label><input class="in ltr" id="gTarget" type="number" step="any" value="' + E(ed.target != null ? ed.target : '') + '"></div>' +
+            '<div><label class="f">المحقق</label><input class="in ltr" id="gActual" type="number" step="any" value="' + E(ed.actual != null ? ed.actual : '') + '"></div>' +
+            '<div><label class="f">التاريخ <span class="req">*</span></label><input class="in ltr" id="gDue" type="date" value="' + E((ed.due || '').slice(0, 10)) + '"></div></div>' +
+          '<div class="tform" style="margin-top:8px;grid-template-columns:1fr 1fr 1fr auto"><div><label class="f">المسؤول</label><select class="in" id="gOwner">' + opts(team, ed.owner != null ? ed.owner : ACTOR, 'الفريق') + '</select></div>' +
+            '<div><label class="f">المرحلة</label><select class="in" id="gPhase">' + opts(phases, ed.phase || now) + '</select></div>' +
+            '<div><label class="f">الحالة</label><select class="in" id="gStatus">' + opts(sts, ed.status || 'لم يبدأ') + '</select></div>' +
+            '<div><button class="btn primary" id="gSave">' + I('check') + (ed.id ? 'حفظ' : 'إضافة') + '</button></div></div>' +
+          '<label class="f">وصف <span class="muted small">(اختياري)</span></label><textarea class="in" id="gDesc" style="min-height:56px">' + E(ed.desc || '') + '</textarea>' +
+          (ed.id ? '<div class="actions" style="margin-top:8px"><button class="btn sm ghost" id="gCancel">إلغاء</button><button class="btn sm ghost" style="color:var(--bad)" id="gDel">' + I('trash') + 'حذف الهدف</button></div>' : '') +
+          '<div class="hint">التقدم يُحسب من «المحقق ÷ المستهدف»، وإذا ما فيه أرقام يُحسب من المهام المرتبطة بالهدف (تربطها من نموذج المهمة).</div></div>' +
+        '<div class="phases">' + phases.map(function (p) {
+          var list = goals.filter(function (g) { return g.phase === p.key; });
+          return '<div class="phase' + (p.key === now ? ' now' : '') + '"><h3>' + E(p.name) + (p.key === now ? ' <span class="here">أنتم هنا</span>' : '') + '</h3><div class="when">' + E(phaseWhen(p)) + '</div>' +
+            (list.length ? list.map(function (g) {
+              var pr = goalProgress(g);
+              return '<div class="task" style="display:block"><div style="display:flex;gap:8px;align-items:center"><b class="tt" data-ge="' + E(g.id) + '" style="flex:1">' + E(g.title) + '</b><span class="badge ' + (GST_CLS[g.status] || '') + '">' + E(g.status) + '</span></div>' +
+                goalBar(g) + '<div class="tm"><span class="badge ' + (g.owner ? 'tq' : 'gray') + '">' + E(g.owner || 'الفريق') + '</span>' + (g.due ? '<span class="badge gray">' + E(shortDate(g.due)) + '</span>' : '') +
+                (pr.tasks.length ? '<span class="badge gray">' + pr.tasks.length + ' مهام</span>' : '') + '</div></div>';
+            }).join('') : '<div class="muted small">لا توجد أهداف لهذه المرحلة.</div>') + '</div>';
+        }).join('') + '</div>';
+      el.querySelectorAll('[data-ge]').forEach(function (b) { b.onclick = function () { GEDIT = goals.filter(function (g) { return g.id === b.dataset.ge; })[0] || null; renderGoals(); window.scrollTo({ top: el.offsetTop - 20, behavior: 'smooth' }); }; });
+      document.getElementById('gSave').onclick = function () {
+        var b = this, v = function (id) { return document.getElementById(id).value.trim(); };
+        if (!v('gTitle')) return TH.toast('اكتب الهدف', true);
+        if (!v('gDue')) return TH.toast('حدد تاريخ الهدف', true);
+        var g = { id: ed.id || '', title: v('gTitle'), desc: v('gDesc'), kpi: v('gKpi'), target: v('gTarget'), actual: v('gActual'), due: v('gDue'), owner: v('gOwner'), phase: v('gPhase'), status: v('gStatus') };
+        needActor().then(function () { return call(b, 'adminGoalSave', g, ACTOR); }).then(function (ng) {
+          var ex = goals.some(function (x) { return x.id === ng.id; });
+          D.goals = ex ? goals.map(function (x) { return x.id === ng.id ? ng : x; }) : goals.concat([ng]);
+          GEDIT = null; render(); setTab('goals', true); TH.toast(ex ? 'حُفظ الهدف' : 'أُضيف الهدف');
+        }, function () {});
+      };
+      var c = document.getElementById('gCancel'); if (c) c.onclick = function () { GEDIT = null; renderGoals(); };
+      var d = document.getElementById('gDel'); if (d) d.onclick = function () {
+        if (!confirm('حذف الهدف؟')) return;
+        needActor().then(function () { return call(d, 'adminGoalDelete', ed.id, ACTOR); }).then(function () { D.goals = goals.filter(function (x) { return x.id !== ed.id; }); GEDIT = null; render(); setTab('goals', true); }, function () {});
+      };
+    }
     function setTab(t, noScroll) {
       TAB = t;
       document.querySelectorAll('#tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === t); });
@@ -688,6 +760,7 @@
       if (t === 'designs') renderDesigns();
       if (t === 'tasks') renderTasks();
       if (t === 'home') renderHome();
+      if (t === 'goals') renderGoals();
       if (!noScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
       if (t === 'projects') renderProjects();
       if (!noScroll) document.getElementById('tabs').scrollIntoView({ behavior: 'smooth' });
@@ -770,6 +843,7 @@
           '<div><label class="f">المرحلة</label><select class="in" id="tPhase">' + opts(phases, ed.phase || now) + '</select></div>' +
           '<div><label class="f">التسليم <span class="req">*</span></label><input class="in ltr" id="tDue" type="date" value="' + E((ed.due || '').slice(0, 10)) + '"></div>' +
           '<div><button class="btn primary" id="tSave">' + I('check') + (ed.id ? 'حفظ' : 'إضافة') + '</button></div></div>' +
+          ((D.goals || []).length ? '<label class="f">الهدف المرتبط <span class="muted small">(اختياري)</span></label><select class="in" id="tGoal"><option value="">— بدون —</option>' + D.goals.map(function (g) { return '<option value="' + E(g.id) + '"' + (g.id === ed.goal ? ' selected' : '') + '>' + E(g.title) + '</option>'; }).join('') + '</select>' : '') +
           '<label class="f">تفاصيل <span class="muted small">(اختياري)</span></label><textarea class="in" id="tDetails" style="min-height:56px">' + E(ed.details || '') + '</textarea>' +
           (TEDIT ? '<div class="actions" style="margin-top:8px"><button class="btn sm ghost" id="tCancel">إلغاء</button>' + (ed.id ? '<button class="btn sm ghost" style="color:var(--bad)" id="tDel">' + I('trash') + 'حذف المهمة</button>' : '') + '</div>' : '') +
           '<div class="hint">المسؤول يوصله إيميل بالمهمة، ويوصله تذكير يوم التسليم الساعة 7 الصبح.</div></div>' +
@@ -801,7 +875,8 @@
         (t.details ? '<div class="small muted" style="white-space:pre-wrap">' + E(t.details) + '</div>' : '') +
         '<div class="tm"><span class="badge ' + (t.assignee ? 'tq' : 'gray') + '">' + I('user').replace('<svg', '<svg width="11" height="11"') + ' ' + E(t.assignee || 'الفريق') + '</span>' +
         (t.due ? '<span class="badge ' + (late ? 'bad' : 'gray') + '">' + I('calendar').replace('<svg', '<svg width="11" height="11"') + ' ' + E(shortDate(t.due)) + (late ? ' (متأخرة)' : '') + '</span>' : '') +
-        (t.status === 'قيد التنفيذ' ? '<span class="badge or">قيد التنفيذ</span>' : '') + '</div></div></div>';
+        (t.status === 'قيد التنفيذ' ? '<span class="badge or">قيد التنفيذ</span>' : '') +
+        (t.goal ? (function () { var g = (D.goals || []).filter(function (x) { return x.id === t.goal; })[0]; return g ? '<span class="badge gray">' + I('target').replace('<svg', '<svg width="11" height="11"') + ' ' + E(g.title) + '</span>' : ''; })() : '') + '</div></div></div>';
     }
     function taskCycle(b) {
       var t = (D.tasks || []).filter(function (x) { return x.id === b.dataset.tk; })[0]; if (!t) return;
@@ -815,7 +890,7 @@
       var v = function (id) { return document.getElementById(id).value.trim(); };
       if (!v('tTitle')) return TH.toast('اكتب المهمة', true);
       if (!v('tDue')) { document.getElementById('tDue').focus(); return TH.toast('حدد تاريخ التسليم للمهمة', true); }
-      var t = { id: (TEDIT && TEDIT.id) || '', title: v('tTitle'), details: v('tDetails'), assignee: v('tWho'), phase: v('tPhase'), due: v('tDue'), status: (TEDIT && TEDIT.status) || 'لم تبدأ' };
+      var t = { id: (TEDIT && TEDIT.id) || '', title: v('tTitle'), details: v('tDetails'), assignee: v('tWho'), phase: v('tPhase'), due: v('tDue'), goal: document.getElementById('tGoal') ? v('tGoal') : '', status: (TEDIT && TEDIT.status) || 'لم تبدأ' };
       needActor().then(function () { return call(b, 'adminTaskSave', t, ACTOR); }).then(function (nt) {
         var exists = (D.tasks || []).some(function (x) { return x.id === nt.id; });
         D.tasks = exists ? D.tasks.map(function (x) { return x.id === nt.id ? nt : x; }) : (D.tasks || []).concat([nt]);
