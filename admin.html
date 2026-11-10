@@ -604,9 +604,10 @@
       var desNew = D.designs.filter(function (x) { return x.status === 'جديد'; }).length;
       var myOpen = (D.tasks || []).filter(function (t) { return t.status !== 'منجزة' && (!ACTOR || t.assignee === ACTOR); }).length;
       var prjNew = (D.projects || []).filter(function (x) { return x.status === 'جديد'; }).length;
+      var shtNew = (D.shoots || []).filter(function (x) { return x.status === 'جديد'; }).length;
       var groups = [
         ['', [['home', 'grid', 'اللوحة الرئيسية'], ['goals', 'target', 'الأهداف'], ['tasks', 'check', 'المهام', myOpen]]],
-        ['الطلبات', [['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['designs', 'edit', 'طلبات التصاميم', desNew], ['projects', 'book', 'وصف المشاريع', prjNew]]],
+        ['الطلبات', [['requests', 'list', 'طلبات النشر', s['يحتاج مراجعة'] || 0], ['designs', 'edit', 'طلبات التصاميم', desNew], ['projects', 'book', 'طلبات المشاريع', prjNew], ['shoots', 'video', 'التصوير والمونتاج', shtNew]]],
         ['النشر', [['platforms', 'plug', 'المنصات المرتبطة'], ['issues', 'alert', 'المشاكل', open], ['media', 'film', 'مكتبة المقاطع'], ['archive', 'archive', 'الأرشيف'], ['guide', 'book', 'دليل نشر إنستغرام']]],
         ['', [['settings', 'gear', 'الروابط والإعدادات']]]
       ];
@@ -617,9 +618,9 @@
       }).join('');
       document.querySelectorAll('#tabs button').forEach(function (b) { b.onclick = function () { setTab(b.dataset.t); sideOpen(false); }; });
       document.getElementById('panes').innerHTML =
-        '<section class="pane" id="p-home"></section><section class="pane" id="p-goals"></section><section class="pane" id="p-tasks"></section><section class="pane" id="p-requests"></section><section class="pane" id="p-designs"></section><section class="pane" id="p-projects"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
+        '<section class="pane" id="p-home"></section><section class="pane" id="p-goals"></section><section class="pane" id="p-tasks"></section><section class="pane" id="p-requests"></section><section class="pane" id="p-designs"></section><section class="pane" id="p-projects"></section><section class="pane" id="p-shoots"></section><section class="pane" id="p-platforms"></section><section class="pane" id="p-issues"></section>' +
         '<section class="pane" id="p-media"></section><section class="pane" id="p-archive"></section><section class="pane guide" id="p-guide"></section><section class="pane" id="p-settings"></section>';
-      renderHome(); renderGoals(); renderTasks(); renderProjects(); renderRequests(); renderDesigns(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
+      renderHome(); renderGoals(); renderShoots(); renderTasks(); renderProjects(); renderRequests(); renderDesigns(); renderPlatforms(); renderIssues(); renderMedia(); renderArchive(); renderGuide(); renderSettings();
       setTab(TAB, true);
     }
     // ===================== اللوحة الرئيسية =====================
@@ -671,8 +672,13 @@
             (reqs.length ? reqs.map(function (r) { return item('q:' + r.id, r.id + ' — ' + r.name, E(r.program || '') + ' · ' + E(TH.date(r.desired, true)), String(r.check || '').indexOf('🚫') > -1 ? '<span class="badge bad">مخالف</span>' : ''); }).join('') : '<div class="muted small">ما فيه طلبات تنتظر المراجعة.</div>') + '</div>' +
           '<div class="dcard"><h3>' + I('edit') + 'التصاميم <span class="badge gray">' + des.length + '</span><button class="more" data-go="t:designs">الكل ←</button></h3>' +
             (des.length ? des.map(function (r) { var dl = daysLeft(r.due); return item('d:' + r.id, r.id + ' — ' + r.title, E(r.entity) + ' · ' + E(r.status), dl != null ? '<span class="badge ' + (dl < 0 ? 'bad' : dl <= 3 ? 'or' : 'gray') + '">' + (dl < 0 ? 'متأخر' : dl === 0 ? 'اليوم' : 'باقي ' + daysAr(dl)) + '</span>' : ''); }).join('') : '<div class="muted small">ما فيه تصاميم قيد العمل.</div>') + '</div>' +
-          '<div class="dcard"><h3>' + I('book') + 'وصف المشاريع <span class="badge gray">' + prj.length + '</span><button class="more" data-go="t:projects">الكل ←</button></h3>' +
+          '<div class="dcard"><h3>' + I('book') + 'طلبات المشاريع <span class="badge gray">' + prj.length + '</span><button class="more" data-go="t:projects">الكل ←</button></h3>' +
             (prj.length ? prj.map(function (p) { return item('p:' + p.id, p.title, E(p.entity) + ' · ' + E(p.status), ''); }).join('') : '<div class="muted small">ما فيه مشاريع جديدة.</div>') + '</div>' +
+          (function () {
+            var sh = (D.shoots || []).filter(function (r) { return ['جديد', 'مقبول', 'قيد التنفيذ'].indexOf(r.status) > -1; }).sort(function (a, b) { return String(a.shoot || a.due).localeCompare(String(b.shoot || b.due)); }).slice(0, 4);
+            return '<div class="dcard"><h3>' + I('video') + 'التصوير والمونتاج <span class="badge gray">' + sh.length + '</span><button class="more" data-go="t:shoots">الكل ←</button></h3>' +
+              (sh.length ? sh.map(function (r) { var dl = daysLeft(r.shoot || r.due); return item('t:shoots', r.id + ' — ' + r.title, E(r.kind) + ' · ' + E(r.status), dl != null ? '<span class="badge ' + (dl < 0 ? 'bad' : dl <= 2 ? 'or' : 'gray') + '">' + (dl < 0 ? 'فات موعده' : dl === 0 ? 'اليوم' : 'باقي ' + daysAr(dl)) + '</span>' : ''); }).join('') : '<div class="muted small">ما فيه طلبات تصوير.</div>') + '</div>';
+          })() +
         '</div>';
       el.querySelectorAll('[data-go]').forEach(function (x) {
         x.onclick = function () {
@@ -752,6 +758,58 @@
         needActor().then(function () { return call(d, 'adminGoalDelete', ed.id, ACTOR); }).then(function () { D.goals = goals.filter(function (x) { return x.id !== ed.id; }); GEDIT = null; render(); setTab('goals', true); }, function () {});
       };
     }
+    // ===================== التصوير والمونتاج =====================
+    var SFILTER = 'active';
+    var SST_CLS = { 'جديد': 'or', 'مقبول': 'tq', 'قيد التنفيذ': 'tq', 'مكتمل': 'ok', 'مرفوض': 'bad', 'مؤرشف': 'gray' };
+    function renderShoots() {
+      var el = document.getElementById('p-shoots'); if (!el || !D) return;
+      var sts = D.shootStatuses || ['جديد', 'مقبول', 'قيد التنفيذ', 'مكتمل', 'مرفوض', 'مؤرشف'];
+      var list = (D.shoots || []).filter(function (p) {
+        if (SFILTER === 'active') return ['مكتمل', 'مرفوض', 'مؤرشف'].indexOf(p.status) < 0;
+        return SFILTER === 'all' || p.status === SFILTER;
+      });
+      if (SFILTER === 'active') list.sort(function (a, b) { return String(a.shoot || a.due).localeCompare(String(b.shoot || b.due)); });
+      el.innerHTML = '<div class="toolbar">' + [['active', 'النشطة']].concat(sts.map(function (x) { return [x, x]; })).concat([['all', 'الكل']])
+        .map(function (f) { return '<button class="chip' + (SFILTER === f[0] ? ' on' : '') + '" data-sf="' + E(f[0]) + '">' + E(f[1]) + '</button>'; }).join('') + '</div>' +
+        (list.length ? list.map(function (p) {
+          var row = function (k, v) { return v ? '<div style="margin-top:10px"><b class="small muted">' + k + '</b><div style="white-space:pre-wrap">' + E(v) + '</div></div>' : ''; };
+          var dl = daysLeft(p.shoot || p.due), done = ['مكتمل', 'مرفوض', 'مؤرشف'].indexOf(p.status) > -1;
+          var wa = '966' + String(p.phone || '').replace(/\D/g, '').replace(/^0/, '').replace(/^966/, '');
+          return '<details class="req" data-sid="' + E(p.id) + '"' + (p._open ? ' open' : '') + '><summary><div class="pv">' + I('video') + '</div>' +
+            '<div><h3><span class="id">' + E(p.id) + '</span>' + E(p.title) + ' <span class="muted small" style="font-weight:400">— ' + E(p.entity) + ' · ' + E(p.name) + '</span></h3>' +
+            '<div class="sub"><span class="badge tq">' + E(p.kind) + '</span>' + (p.shoot ? ' <span class="badge ' + (done ? 'gray' : dl < 0 ? 'bad' : dl <= 2 ? 'or' : 'gray') + '">' + I('calendar').replace('<svg', '<svg width="12" height="12"') + ' التصوير: ' + E(dDate(p.shoot)) + (p.time ? ' ' + E(p.time) : '') + '</span>' : '') +
+              (p.priority === 'مستعجل' ? ' <span class="badge bad">مستعجل</span>' : '') + '</div></div>' +
+            '<div class="side"><span class="badge or">' + I('video').replace('<svg', '<svg width="12" height="12"') + ' تصوير · أنس</span><span class="badge ' + (SST_CLS[p.status] || '') + '">' + E(p.status) + '</span></div></summary>' +
+            '<div class="body" style="padding:4px 16px 16px">' + row('التفاصيل', p.details) + row('المكان', p.place) + row('المخرجات المطلوبة', p.outputs) +
+              '<div class="row2"><div>' + row('المقاس', p.ratio) + row('مدة الفيديو', p.length) + '</div><div>' + row('موعد التسليم', dDate(p.due)) + row('المواد الخام', p.raw) + '</div></div>' +
+              (p.history ? '<div style="margin-top:10px"><b class="small muted">سجل الإجراءات</b><div class="small" style="white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:8px 10px;margin-top:4px">' + E(p.history) + '</div></div>' : '') +
+              (p.status === 'جديد' ? '<div class="actions" style="display:flex;gap:8px;margin-top:12px"><button class="btn ok" data-sact="accept" data-id="' + E(p.id) + '">' + I('check') + 'قبول</button><button class="btn" style="background:var(--bad-soft);color:var(--bad)" data-sact="reject" data-id="' + E(p.id) + '">' + I('x') + 'رفض</button></div>' : '') +
+              '<div style="margin-top:14px;border-top:1px dashed var(--line);padding-top:12px"><div class="row2"><div><label class="f">الحالة</label><select class="in" data-sst="' + E(p.id) + '">' +
+                sts.map(function (x) { return '<option' + (x === p.status ? ' selected' : '') + '>' + E(x) + '</option>'; }).join('') + '</select></div>' +
+                '<div><label class="f">رابط النتيجة (الصور أو الفيديو)</label><input class="in ltr" data-sres="' + E(p.id) + '" value="' + E(p.result || '') + '" placeholder="https://drive.google.com/…"></div></div>' +
+              '<label class="f">ملاحظات الفريق</label><textarea class="in" data-snote="' + E(p.id) + '" style="min-height:60px">' + E(p.notes || '') + '</textarea>' +
+              '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn sm primary" data-sact="save" data-id="' + E(p.id) + '">' + I('check') + 'حفظ</button>' +
+                (p.result ? '<a class="btn sm" href="' + E(p.result) + '" target="_blank" rel="noopener">' + I('link') + 'فتح النتيجة</a>' : '') +
+                '<a class="btn sm" href="https://wa.me/' + E(wa) + '" target="_blank" rel="noopener">' + I('chat') + 'واتساب صاحب الطلب</a>' +
+                '<button class="btn sm ghost" style="color:var(--bad)" data-sact="del" data-id="' + E(p.id) + '">' + I('trash') + 'حذف</button></div></div></div></details>';
+        }).join('') : '<div class="empty">' + I('video') + '<p>لا توجد طلبات تصوير أو مونتاج هنا.</p></div>');
+      el.querySelectorAll('[data-sf]').forEach(function (c) { c.onclick = function () { SFILTER = c.dataset.sf; renderShoots(); }; });
+      el.querySelectorAll('details[data-sid]').forEach(function (d) { d.addEventListener('toggle', function () { var p = (D.shoots || []).filter(function (x) { return x.id === d.dataset.sid; })[0]; if (p) p._open = d.open; }); });
+      el.querySelectorAll('[data-sact]').forEach(function (b) { b.onclick = function () { shootAct(b); }; });
+    }
+    function shootAct(b) {
+      var id = b.dataset.id, a = b.dataset.sact;
+      var put = function (np) { if (!np) return; np._open = true; D.shoots = D.shoots.map(function (x) { return x.id === np.id ? np : x; }); render(); setTab('shoots', true); };
+      needActor().then(function () {
+        if (a === 'accept') return call(b, 'adminShootUpdate', id, 'مقبول', null, null, ACTOR).then(function (np) { TH.toast('قُبل الطلب'); put(np); });
+        if (a === 'reject') { var why = prompt('سبب الرفض:', ''); if (why === null) return; return call(b, 'adminShootUpdate', id, 'مرفوض', why || null, null, ACTOR).then(function (np) { TH.toast('رُفض الطلب'); put(np); }); }
+        if (a === 'save') return call(b, 'adminShootUpdate', id, document.querySelector('[data-sst="' + id + '"]').value, document.querySelector('[data-snote="' + id + '"]').value, document.querySelector('[data-sres="' + id + '"]').value, ACTOR).then(function (np) { TH.toast('حُفظ'); put(np); });
+        if (a === 'del') {
+          if (!confirm('حذف الطلب ' + id + '؟ (ينقل لورقة «المحذوفات»)')) return;
+          return call(b, 'adminShootDelete', id, ACTOR).then(function () { D.shoots = D.shoots.filter(function (x) { return x.id !== id; }); render(); setTab('shoots', true); TH.toast('حُذف'); });
+        }
+      }, function () {});
+    }
     function setTab(t, noScroll) {
       TAB = t;
       document.querySelectorAll('#tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === t); });
@@ -761,6 +819,7 @@
       if (t === 'tasks') renderTasks();
       if (t === 'home') renderHome();
       if (t === 'goals') renderGoals();
+      if (t === 'shoots') renderShoots();
       if (!noScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
       if (t === 'projects') renderProjects();
       if (!noScroll) document.getElementById('tabs').scrollIntoView({ behavior: 'smooth' });
