@@ -265,6 +265,15 @@
   .task.done .tt { text-decoration: line-through; color: var(--muted); }
   .task .tt { font-weight: 500; cursor: pointer; }
   .task .tm { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; }
+  .badge.by { background: #FFF4E5; color: #8A4B00; }
+  .badge.cbtn { border: 0; cursor: pointer; background: #EEF0FA; color: var(--navy); font: inherit; font-size: 12px; }
+  .tcom { margin-top: 8px; background: #F7F8FC; border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+  .cmt { background: #fff; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; border: 1px solid #ECEEF6; }
+  .cmt-h { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--navy); }
+  .cmt-h span { color: #999; font-size: 11.5px; }
+  .cmt-t { white-space: pre-wrap; font-size: 14px; margin-top: 3px; color: #333; }
+  .cmt-new { display: flex; gap: 8px; align-items: flex-end; }
+  .cmt-new textarea { min-height: 44px; flex: 1; margin: 0; }
   .task.prog .tk { border-color: var(--tq); background: var(--tq-soft); }
   .tform { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; }
   @media (max-width: 860px) { .tform { grid-template-columns: 1fr 1fr; } .tform .tf-title { grid-column: 1 / -1; } }
@@ -467,7 +476,8 @@
   function guessMime(n) {
     var e = String(n).split('.').pop().toLowerCase();
     return { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', heif: 'image/heif',
-      pdf: 'application/pdf', mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/mp4', webm: 'video/webm' }[e] || 'application/octet-stream';
+      pdf: 'application/pdf', mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/mp4', webm: 'video/webm',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', csv: 'text/csv' }[e] || 'application/octet-stream';
   }
   TH.guessMime = guessMime;
   /* أبعاد الصورة أو مدة المقطع قبل الرفع */
@@ -917,6 +927,8 @@
         }).join('') + '</div>';
       el.querySelectorAll('[data-tf]').forEach(function (c) { c.onclick = function () { TFILTER = c.dataset.tf; renderTasks(); }; });
       el.querySelectorAll('[data-tk]').forEach(function (b) { b.onclick = function () { taskCycle(b); }; });
+      el.querySelectorAll('[data-tc]').forEach(function (b) { b.onclick = function () { var id = b.dataset.tc; TOPEN[id] = !TOPEN[id]; document.getElementById('tc_' + id).classList.toggle('hidden', !TOPEN[id]); if (TOPEN[id]) document.getElementById('tci_' + id).focus(); }; });
+      el.querySelectorAll('[data-tcs]').forEach(function (b) { b.onclick = function () { taskComment(b); }; });
       el.querySelectorAll('[data-te]').forEach(function (b) { b.onclick = function () { TEDIT = (D.tasks || []).filter(function (t) { return t.id === b.dataset.te; })[0] || null; renderTasks(); window.scrollTo({ top: el.offsetTop - 20, behavior: 'smooth' }); }; });
       document.getElementById('tSave').onclick = function () { taskSave(this); };
       var c = document.getElementById('tCancel'); if (c) c.onclick = function () { TEDIT = null; renderTasks(); };
@@ -935,7 +947,24 @@
         '<div class="tm"><span class="badge ' + (t.assignee ? 'tq' : 'gray') + '">' + I('user').replace('<svg', '<svg width="11" height="11"') + ' ' + E(t.assignee || 'الفريق') + '</span>' +
         (t.due ? '<span class="badge ' + (late ? 'bad' : 'gray') + '">' + I('calendar').replace('<svg', '<svg width="11" height="11"') + ' ' + E(shortDate(t.due)) + (late ? ' (متأخرة)' : '') + '</span>' : '') +
         (t.status === 'قيد التنفيذ' ? '<span class="badge or">قيد التنفيذ</span>' : '') +
-        (t.goal ? (function () { var g = (D.goals || []).filter(function (x) { return x.id === t.goal; })[0]; return g ? '<span class="badge gray">' + I('target').replace('<svg', '<svg width="11" height="11"') + ' ' + E(g.title) + '</span>' : ''; })() : '') + '</div></div></div>';
+        (t.goal ? (function () { var g = (D.goals || []).filter(function (x) { return x.id === t.goal; })[0]; return g ? '<span class="badge gray">' + I('target').replace('<svg', '<svg width="11" height="11"') + ' ' + E(g.title) + '</span>' : ''; })() : '') +
+        (t.by ? '<span class="badge by">✍️ كتبها: ' + E(t.by === 'تلقائي' ? 'المنصة (تلقائي)' : t.by) + '</span>' : '') +
+        '<button class="badge cbtn" data-tc="' + E(t.id) + '">💬 ' + ((t.comments || []).length ? 'التعليقات (' + t.comments.length + ')' : 'تعليق') + '</button></div>' +
+        '<div class="tcom' + (TOPEN[t.id] ? '' : ' hidden') + '" id="tc_' + E(t.id) + '">' +
+          (t.comments || []).map(function (c) {
+            return '<div class="cmt"><div class="cmt-h"><b>' + E(c.by) + '</b><span>' + E(shortDate(c.at)) + ' ' + E(new Date(c.at).toLocaleTimeString('ar-SA', { hour: 'numeric', minute: '2-digit' })) + '</span></div><div class="cmt-t">' + E(c.text) + '</div></div>';
+          }).join('') +
+          '<div class="cmt-new"><textarea class="in" id="tci_' + E(t.id) + '" placeholder="اكتب ملاحظتك أو تعليقك…"></textarea><button class="btn sm primary" data-tcs="' + E(t.id) + '">' + I('send') + 'إرسال</button></div>' +
+        '</div></div></div>';
+    }
+    var TOPEN = {};
+    function taskComment(b) {
+      var id = b.dataset.tcs, box = document.getElementById('tci_' + id), txt = box.value.trim();
+      if (!txt) { box.focus(); return TH.toast('اكتب التعليق أول', true); }
+      needActor().then(function () { return call(b, 'adminTaskComment', id, txt, ACTOR); }).then(function (nt) {
+        D.tasks = D.tasks.map(function (x) { return x.id === nt.id ? nt : x; }); TOPEN[id] = true; renderTasks();
+        TH.toast('أُضيف التعليق' + (nt.mailed && nt.mailed.length ? ' — وصل إيميل لـ' + nt.mailed.join(' و') : ''));
+      }, function () {});
     }
     function taskCycle(b) {
       var t = (D.tasks || []).filter(function (x) { return x.id === b.dataset.tk; })[0]; if (!t) return;
@@ -1008,6 +1037,10 @@
             '<div class="side"><span class="badge ' + (PST_CLS[p.status] || '') + '">' + E(p.status) + '</span><span class="muted small">وصل ' + E(TH.date(p.created, false)) + '</span></div></summary>' +
             '<div class="body" style="padding:4px 16px 16px">' + row('وصف المشروع', p.desc) + row('مواعيد المشروع', [when, p.dates].filter(Boolean).join('\n')) +
               row('احتياجات المشروع', p.needs) + row('ملاحظات', p.notes) + row('صاحب الطلب', p.name + ' — ' + p.phone) +
+              ((p.files || []).length ? '<div style="margin-top:10px"><b class="small muted">ملفات مرفقة</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' + p.files.map(function (f) {
+                return '<a class="btn sm" style="background:#EEF8F2;color:#1D7044" href="https://drive.google.com/uc?export=download&id=' + E(f.id) + '" target="_blank" rel="noopener"><b style="font-size:11px">XLS</b> ' + E(f.name || 'ملف') + '</a>' +
+                  '<a class="btn sm ghost" href="https://drive.google.com/file/d/' + E(f.id) + '/view" target="_blank" rel="noopener">عرض</a>';
+              }).join('') + '</div></div>' : '') +
               (p.history ? '<div style="margin-top:10px"><b class="small muted">سجل الإجراءات</b><div class="small" style="white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:8px 10px;margin-top:4px">' + E(p.history) + '</div></div>' : '') +
               '<div style="margin-top:14px;border-top:1px dashed var(--line);padding-top:12px"><div class="row2"><div><label class="f">الحالة</label><select class="in" data-pst="' + E(p.id) + '">' +
                 sts.map(function (x) { return '<option' + (x === p.status ? ' selected' : '') + '>' + E(x) + '</option>'; }).join('') + '</select></div>' +
