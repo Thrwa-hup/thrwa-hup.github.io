@@ -265,6 +265,8 @@
   .task.done .tt { text-decoration: line-through; color: var(--muted); }
   .task .tt { font-weight: 500; cursor: pointer; }
   .task .tm { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; }
+  .aibox { margin-top: 12px; background: #FAF8FF; border: 1px solid #E6DFFB; border-radius: 14px; padding: 10px 12px; }
+  .aihd { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #5b3fb0; }
   .badge.by { background: #FFF4E5; color: #8A4B00; }
   .badge.cbtn { border: 0; cursor: pointer; background: #EEF0FA; color: var(--navy); font: inherit; font-size: 12px; }
   .tcom { margin-top: 8px; background: #F7F8FC; border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
@@ -989,7 +991,7 @@
     function aiCard() {
       var on = !!D.geminiLinked;
       return '<div class="pcard"><h3>✨ تحسين النصوص بالذكاء الاصطناعي (Gemini — مجاني)</h3>' +
-        (on ? '<div class="note ok" style="margin-bottom:10px">' + I('check') + '<div>مفعّل — أي طلب نشر جديد يتحسّن نصه تلقائيًا: مختصر، ما يكرر كلام الصورة، وضمن حد الحروف.</div></div>' : '') +
+        (on ? '<div class="note ok" style="margin-bottom:10px">' + I('check') + '<div>مفعّل — أي طلب نشر جديد ينكتب له تلقائيًا نص واتساب (محسّن ومشوّق) ونص سناب (سطر واحد)، تحت النص الأصلي.</div></div>' : '') +
         '<ol class="steps" style="padding-right:18px;margin-top:0"><li>افتح <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> بحساب قوقل.</li><li>اضغط <b>Create API key</b> وانسخ المفتاح.</li><li>الصقه هنا واضغط «تفعيل».</li></ol>' +
         '<input class="in ltr" id="gemKey" placeholder="' + (on ? 'المفتاح محفوظ — الصق مفتاح جديد فقط لو تبي تغيّره' : 'AIza…') + '" autocomplete="off">' +
         '<div class="actions" style="margin-top:8px"><button class="btn sm primary" id="gemSave">' + I('check') + 'تفعيل</button>' + (on ? '<button class="btn sm ghost" id="gemOff">إيقاف</button>' : '') + '</div></div>';
@@ -1333,7 +1335,7 @@
       var c = (r.custom || {})[k] || {};
       var files = (c.files && c.files.length ? r.files.filter(function (f) { return c.files.indexOf(f.id) > -1; }) : r.files).filter(function (f) { return /^(image|video)\//.test(f.mime); });
       if (k === 'tiktok') files = files.filter(function (f) { return /^video\//.test(f.mime); });
-      return { files: files, text: c.text || r.text };
+      return { files: files, text: c.text || (k === 'whatsapp' && r.wa) || (k === 'snapchat' && r.snap) || r.text };
     }
     // روابط رسمية تفتح التطبيق في الجوال (وموقعه في الكمبيوتر)
     // روابط التطبيقات المباشرة للجوال: تفتح التطبيق نفسه حتى لو كانت اللوحة مفتوحة داخل متصفح قوقل أو تيليجرام
@@ -1538,6 +1540,15 @@
       return '<div class="body"><div>' +
         '<div class="gal">' + (gal || '<div class="muted small">لا توجد ملفات.</div>') + '</div>' + lib +
         '<label class="f">نص المنشور</label><textarea class="in" data-text="' + E(r.id) + '" style="min-height:130px">' + E(r.text) + '</textarea>' +
+        '<div class="aibox">' +
+          '<div class="aihd"><b>✨ نصوص الذكاء الاصطناعي</b><button class="btn sm" style="background:#F4F0FF;color:#5b3fb0" data-act="aitext" data-id="' + E(r.id) + '">' + (r.wa ? 'أعد الكتابة' : 'اكتبها الحين') + '</button></div>' +
+          '<label class="f">نص واتساب <span class="muted small">(محسّن ومشوّق)</span></label>' +
+          '<textarea class="in" data-wa="' + E(r.id) + '" style="min-height:110px" placeholder="' + (D.geminiLinked ? 'اضغط «اكتبها الحين» ويتعبّى تلقائيًا' : 'فعّل Gemini من الإعدادات أول') + '">' + E(r.wa || '') + '</textarea>' +
+          '<div class="actions" style="margin-top:6px"><button class="btn sm ghost" data-act="cpwa" data-id="' + E(r.id) + '">' + I('copy') + 'نسخ نص واتساب</button></div>' +
+          '<label class="f">نص سناب <span class="muted small">(سطر واحد)</span></label>' +
+          '<input class="in" data-snap="' + E(r.id) + '" value="' + E(r.snap || '') + '" placeholder="سطر واحد قصير">' +
+          '<div class="actions" style="margin-top:6px"><button class="btn sm ghost" data-act="cpsnap" data-id="' + E(r.id) + '">' + I('copy') + 'نسخ نص سناب</button><button class="btn sm" data-act="saveai" data-id="' + E(r.id) + '">' + I('check') + 'حفظ النصين</button></div>' +
+        '</div>' +
         '<label class="f">المنصات</label><div class="pl-sel" data-plats="' + E(r.id) + '">' + plats + '</div>' +
         '<label class="f">موعد النشر</label><input class="in ltr" type="datetime-local" data-desired="' + E(r.id) + '" value="' + localInput(r.desired) + '">' +
         '<div class="actions"><button class="btn sm" data-act="save" data-id="' + E(r.id) + '">' + I('edit') + 'حفظ التعديلات وإعادة الفحص</button></div>' +
@@ -1554,7 +1565,6 @@
         (r.platforms.indexOf('instagram') > -1 && igTodo(r).length ? '<button class="btn sm accent" data-act="igprep" data-id="' + E(r.id) + '">' + I('image') + 'تجهيز الصور لإنستغرام (' + igTodo(r).length + ')</button>' : '') +
         (r.status !== 'مرفوض' && r.status !== 'منشور' ? '<button class="btn sm bad" data-act="reject" data-id="' + E(r.id) + '">' + I('x') + 'رفض</button>' : '') +
         (r.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-act="archive" data-id="' + E(r.id) + '">' + I('archive') + 'أرشفة</button>' : '') +
-        '<button class="btn sm" style="background:#F4F0FF;color:#5b3fb0" data-act="aitext" data-id="' + E(r.id) + '">✨ حسّن النص</button>' +
         '<button class="btn sm bad" data-act="del" data-id="' + E(r.id) + '">' + I('trash') + 'حذف</button>' +
         '</div></div></div>';
     }
@@ -1572,10 +1582,19 @@
       if (a === 'aitext') {
         if (!D.geminiLinked) return TH.toast('فعّل الذكاء الاصطناعي أول: الروابط والإعدادات ← تحسين النصوص (Gemini)', true);
         return call(b, 'adminAiCaption', id, true).then(function (res) {
-          if (res.skipped) return TH.toast('ما تم التحسين', true);
-          TH.toast('✨ تحسّن النص — النص الأصلي محفوظ في الملاحظات'); load(true);
+          if (res.skipped) return TH.toast('فعّل Gemini من الإعدادات أول', true);
+          var r0 = findReq(id); r0.wa = res.wa; r0.snap = res.snap; replaceReq(r0);
+          TH.toast('✨ انكتب نص واتساب ونص سناب');
         });
       }
+      if (a === 'cpwa' || a === 'cpsnap') {
+        var el = document.querySelector(a === 'cpwa' ? '[data-wa="' + id + '"]' : '[data-snap="' + id + '"]'), txt = el.value.trim();
+        if (!txt) return TH.toast('الخانة فاضية', true);
+        var done = function () { TH.toast('نُسخ ✓'); };
+        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt).then(done, function () { el.select(); document.execCommand('copy'); done(); });
+        el.select(); document.execCommand('copy'); return done();
+      }
+      if (a === 'saveai') return call(b, 'adminSaveAiTexts', id, document.querySelector('[data-wa="' + id + '"]').value, document.querySelector('[data-snap="' + id + '"]').value).then(function (r) { TH.toast('حُفظ النصين'); replaceReq(r); });
       if (a === 'approve') call(b, 'adminSetStatus', id, 'مقبول', note, ACTOR).then(function (r) { TH.toast('اعتُمد الطلب، وسيُنشر في موعده'); replaceReq(r); });
       if (a === 'reject') {
         var why = prompt('سبب الرفض (يظهر في ملاحظة المراجعة):', note || '');
