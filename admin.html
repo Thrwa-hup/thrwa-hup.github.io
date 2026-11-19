@@ -879,6 +879,7 @@
               '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn sm primary" data-sact="save" data-id="' + E(p.id) + '">' + I('check') + 'حفظ</button>' +
                 (p.result ? '<a class="btn sm" href="' + E(p.result) + '" target="_blank" rel="noopener">' + I('link') + 'فتح النتيجة</a>' : '') +
                 '<a class="btn sm" href="https://wa.me/' + E(wa) + '" target="_blank" rel="noopener">' + I('chat') + 'واتساب صاحب الطلب</a>' +
+                (p.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-close="' + E(p.id) + '">' + I('lock') + 'إقفال الطلب</button>' : '') +
                 '<button class="btn sm ghost" style="color:var(--bad)" data-sact="del" data-id="' + E(p.id) + '">' + I('trash') + 'حذف</button></div></div></div></details>';
         }).join('') : '<div class="empty">' + I('video') + '<p>لا توجد طلبات تصوير أو مونتاج هنا.</p></div>');
       el.querySelectorAll('[data-sf]').forEach(function (c) { c.onclick = function () { SFILTER = c.dataset.sf; renderShoots(); }; });
@@ -1128,6 +1129,7 @@
               '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn sm primary" data-pact="save" data-id="' + E(p.id) + '">' + I('check') + 'حفظ</button>' +
                 '<button class="btn sm" data-pact="task" data-id="' + E(p.id) + '">' + I('check') + 'حوّله لمهمة</button>' +
                 '<a class="btn sm" href="https://wa.me/966' + E(String(p.phone).replace(/\D/g, '').replace(/^0/, '').replace(/^966/, '')) + '" target="_blank" rel="noopener">' + I('chat') + 'واتساب صاحب الطلب</a>' +
+                (p.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-close="' + E(p.id) + '">' + I('lock') + 'إقفال الطلب</button>' : '') +
                 '<button class="btn sm ghost" style="color:var(--bad)" data-pact="del" data-id="' + E(p.id) + '">' + I('trash') + 'حذف</button></div></div></div></details>';
         }).join('') : '<div class="empty">' + I('book') + '<p>لا توجد مشاريع هنا.</p><p class="small">تنرسل من صفحة الطلبات باختيار «وصف المشاريع».</p></div>');
       el.querySelectorAll('[data-pf]').forEach(function (c) { c.onclick = function () { PFILTER = c.dataset.pf; renderProjects(); }; });
@@ -1220,6 +1222,7 @@
           '<button class="btn sm" style="background:var(--or);color:var(--navy)" data-dact="ai" data-id="' + E(r.id) + '">' + I('edit') + 'صمّمه بالذكاء الاصطناعي</button>' +
           (r.result ? '<a class="btn sm" href="' + E(r.result) + '" target="_blank" rel="noopener">' + I('link') + 'فتح التصميم</a>' : '') +
           (r.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-dact="archive" data-id="' + E(r.id) + '">' + I('archive') + 'أرشفة</button>' : '') +
+          (r.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-close="' + E(r.id) + '">' + I('lock') + 'إقفال الطلب</button>' : '') +
           '<button class="btn sm ghost" style="color:var(--bad)" data-dact="del" data-id="' + E(r.id) + '">' + I('trash') + 'حذف</button></div></div></div>';
     }
 
@@ -1277,7 +1280,8 @@
           '<button class="btn sm" data-x="copy">' + I('copy') + 'نسخ النص</button></div>' +
         (files.length ? '<div class="appstep"><b>٢) المرفقات (' + files.length + ')</b><div class="appfiles">' +
           files.map(function (f) { return '<a href="https://drive.google.com/uc?export=download&id=' + E(f.id) + '" target="_blank" rel="noopener" style="background-image:url(' + thumbUrl(f.id, 200) + ')" title="تحميل"></a>'; }).join('') + '</div>' +
-          (mob && canShare ? '<button class="btn sm primary" data-x="prep">' + I('share') + 'جهّز الصور مع النص</button><div class="hint">بعد التجهيز اضغط «شارك» واختر واتساب ثم المصمم.</div>' : '<div class="hint">من الكمبيوتر: حمّل الصور من فوق وأرفقها في المحادثة.</div>') + '</div>' : '') +
+          (mob && canShare ? '<button class="btn sm primary" data-x="prep">' + I('share') + 'جهّز الصور مع النص</button><div class="hint">بعد التجهيز اضغط «شارك» واختر واتساب ثم المصمم، أو اختر «حفظ الصور» عشان تنحفظ كلها في جوالك.</div>' :
+            '<button class="btn sm primary" data-x="saveall">' + I('download') + 'حفظ الكل (' + files.length + ')</button><div class="hint">تنحفظ كلها مرة وحدة في مجلد التنزيلات، وبعدها اسحبها لمحادثة المصمم.</div>') + '</div>' : '') +
         '<div class="appstep"><b>' + (files.length ? '٣' : '٢') + ') رقم المصمم <span class="muted small">(اختياري — ينحفظ للمرات الجاية)</span></b><input class="in ltr" data-x="num" placeholder="05XXXXXXXX" value="' + E(num) + '">' +
           '<a class="btn sm" style="background:#25D366;color:#fff" data-x="open" href="#" target="_blank" rel="noopener">' + I('chat') + 'افتح واتساب بالنص</a></div>' +
         '<div class="actions"><button class="btn ghost" data-x="close">إغلاق</button></div></div>';
@@ -1300,6 +1304,8 @@
       m.onclick = function (e) { if (e.target === m) m.remove(); };
       m.querySelector('[data-x=close]').onclick = function () { m.remove(); };
       m.querySelector('[data-x=copy]').onclick = function () { copySync(txt.value); TH.toast('نُسخ النص'); };
+      var sa = m.querySelector('[data-x=saveall]');
+      if (sa) sa.onclick = function () { saveAll(files, sa); };
       var pb = m.querySelector('[data-x=prep]'), prepared = null;
       if (pb) pb.onclick = function () {
         if (prepared) {
@@ -1451,6 +1457,16 @@
       var w = window.open(q ? 'https://web.whatsapp.com/send?' + q : 'https://web.whatsapp.com/', 'tharwa_whatsapp');
       if (w) { try { w.focus(); } catch (e) { /* لا شيء */ } }
     }
+    // «إقفال الطلب»: يقفل أي طلب (نشر، تصميم، مشروع، تصوير) ويأرشفه ويقفل مهمته
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-close]'); if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      var id = b.dataset.close;
+      if (!confirm('إقفال الطلب ' + id + '؟ ينتقل للأرشيف وتنقفل مهمته.')) return;
+      needActor().then(function () { return call(b, 'adminCloseRequest', id, ACTOR); }).then(function () {
+        TH.toast('انقفل الطلب ' + id + ' وانتقل للأرشيف'); load(true);
+      }, function () {});
+    }, true);
     // أي رابط واتساب في اللوحة يمر من هنا
     document.addEventListener('click', function (e) {
       if (e.defaultPrevented || e.button) return;
@@ -1505,7 +1521,8 @@
           '<button class="btn sm" data-x="copy">' + I('copy') + 'نسخ النص</button></div>' +
         '<div class="appstep"><b>٢) ' + (v.files.length > 1 ? 'الملفات (' + v.files.length + ') — تنزل مع بعض في نفس المنشور' : 'الملف') + '</b><div class="appfiles">' +
           v.files.map(function (f) { return '<a href="https://drive.google.com/uc?export=download&id=' + E(f.id) + '" target="_blank" rel="noopener" style="background-image:url(' + thumbUrl(f.id, 200) + ')" title="تحميل">' + (/^video\//.test(f.mime) ? '<span class="ic">' + I('play') + '</span>' : '') + '<span class="dl">' + I('download') + '</span></a>'; }).join('') +
-          '</div>' + (mob && canShare ? '<button class="btn sm primary" data-x="prep">' + I('share') + 'جهّز الملفات للمشاركة</button><div class="hint">بعد التجهيز اضغط «شارك» واختر ' + E(name) + '.</div>' : '<div class="hint">اضغط على الملف عشان تحمّله.</div>') + '</div>' +
+          '</div>' + (mob && canShare ? '<button class="btn sm primary" data-x="prep">' + I('share') + 'جهّز الملفات للمشاركة</button><div class="hint">بعد التجهيز اضغط «شارك» واختر ' + E(name) + '، أو «حفظ الصور» عشان تنحفظ كلها.</div>' :
+            (v.files.length > 1 ? '<button class="btn sm primary" data-x="saveall">' + I('download') + 'حفظ الكل (' + v.files.length + ')</button><div class="hint">تنحفظ كلها مرة وحدة في مجلد التنزيلات، أو اضغط على ملف عشان تحمّله لحاله.</div>' : '<div class="hint">اضغط على الملف عشان تحمّله.</div>')) + '</div>' +
         '<div class="appstep"><b>٣) افتح ' + E(name) + '</b><div style="display:flex;gap:8px;flex-wrap:wrap">' +
           (mob && APPSCHEME[k] ? '<a class="btn sm accent" data-x="open" href="' + E(APPSCHEME[k](v.text)) + '">' + I('link') + 'افتح تطبيق ' + E(name) + '</a>' : '') +
           '<a class="btn sm' + (mob && APPSCHEME[k] ? ' ghost' : ' accent') + '" data-x="openweb" href="' + E(APPLINK[k] ? APPLINK[k](v.text, mob) : '#') + '" target="_blank" rel="noopener">' + I('link') + (mob && APPSCHEME[k] ? 'أو افتح موقع ' : 'افتح ') + E(name) + '</a></div>' +
@@ -1519,6 +1536,8 @@
       m.querySelectorAll('[data-x=open],[data-x=openweb]').forEach(function (a) { a.addEventListener('click', function () { copySync(v.text); }); });
       m.querySelector('[data-x=close]').onclick = function () { m.remove(); };
       m.querySelector('[data-x=done]').onclick = function () { var b = this; call(b, 'adminMarkManual', r.id, k, '').then(function (nr) { m.remove(); TH.toast('سُجّل منشور في ' + name); replaceReq(nr); }); };
+      var sa2 = m.querySelector('[data-x=saveall]');
+      if (sa2) sa2.onclick = function () { saveAll(v.files, sa2); };
       var pb = m.querySelector('[data-x=prep]');
       if (pb) setTimeout(function () { pb.click(); }, 50); // يبدأ التجهيز تلقائيًا
       if (pb) pb.onclick = function () {
@@ -1560,6 +1579,33 @@
         });
       }
       return next();
+    }
+    /** «حفظ الكل»: يحمّل كل المرفقات ويحفظها في مجلد التنزيلات بضغطة وحدة (بأسمائها بدون تاريخ الرفع) */
+    function saveAll(files, btn) {
+      if (!files || !files.length) return;
+      btn.disabled = true;
+      var n = files.length, i = 0, used = {};
+      var lab = function (p) { btn.innerHTML = '<span class="spin"></span> جارٍ الحفظ ' + Math.round(((i + (p || 0)) / n) * 100) + '%'; };
+      var nice = function (name) {
+        var x = String(name || 'ملف').replace(/^\d{8}-\d{4}_/, '').replace(/[\\/:*?"<>|]+/g, '-') || 'ملف';
+        if (used[x]) { var k = ++used[x]; x = x.replace(/(\.[^.]+)?$/, ' (' + k + ')$1'); } else used[x] = 1;
+        return x;
+      };
+      var save = function (file, name) {
+        var u = URL.createObjectURL(file), a = document.createElement('a');
+        a.href = u; a.download = nice(name); a.style.display = 'none';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(u); }, 120000);
+      };
+      lab(0);
+      var ch = Promise.resolve();
+      files.forEach(function (f) {
+        ch = ch.then(function () { return fetchFile(f, lab).then(function (file) { save(file, f.name); i++; lab(0); return new Promise(function (ok) { setTimeout(ok, 350); }); }); });
+      });
+      ch.then(function () {
+        btn.disabled = false; btn.innerHTML = I('check') + 'انحفظت (' + n + ')';
+        TH.toast(n > 1 ? 'انحفظت ' + n + ' ملفات في مجلد التنزيلات — إذا سألك المتصفح عن تنزيل عدة ملفات اختر «سماح»' : 'انحفظ الملف في مجلد التنزيلات');
+      }).catch(function (e) { btn.disabled = false; btn.innerHTML = I('download') + 'حاول مرة ثانية'; TH.toast(e.message || 'تعذر الحفظ', true); });
     }
     function shareItem(b, x) {
       var canFiles = navigator.canShare && navigator.share;
@@ -1679,6 +1725,7 @@
         (r.platforms.indexOf('instagram') > -1 && igTodo(r).length ? '<button class="btn sm accent" data-act="igprep" data-id="' + E(r.id) + '">' + I('image') + 'تجهيز الصور لإنستغرام (' + igTodo(r).length + ')</button>' : '') +
         (r.status !== 'مرفوض' && r.status !== 'منشور' ? '<button class="btn sm bad" data-act="reject" data-id="' + E(r.id) + '">' + I('x') + 'رفض</button>' : '') +
         (r.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-act="archive" data-id="' + E(r.id) + '">' + I('archive') + 'أرشفة</button>' : '') +
+        (r.status !== 'مؤرشف' ? '<button class="btn sm ghost" data-close="' + E(r.id) + '">' + I('lock') + 'إقفال الطلب</button>' : '') +
         '<button class="btn sm bad" data-act="del" data-id="' + E(r.id) + '">' + I('trash') + 'حذف</button>' +
         '</div></div></div>';
     }
