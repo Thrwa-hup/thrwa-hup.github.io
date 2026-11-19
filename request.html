@@ -242,11 +242,19 @@
     .prj { border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; background: #fff; }
     .prj-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .prj-hd b { font-family: var(--f-head); font-size: 16px; font-weight: 600; }
-    .xls-pick { display: flex; align-items: center; gap: 12px; border: 1.5px dashed var(--line-2); border-radius: 12px; padding: 11px 14px; cursor: pointer; background: #FAFBFD; transition: border-color .15s, background .15s; }
-    .xls-pick:hover { border-color: #1D7044; }
-    .xls-pick.on { border-style: solid; border-color: #1D7044; background: #EEF8F2; }
-    .xls-ic { background: #1D7044; color: #fff; font-weight: 700; font-size: 12px; border-radius: 7px; padding: 5px 7px; letter-spacing: 1px; flex: none; }
-    .xls-name { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fpick { --fc: var(--navy); --fbg: var(--sel); display: flex; align-items: center; gap: 12px; border: 1.5px dashed var(--line-2); border-radius: 12px; padding: 11px 14px; cursor: pointer; background: #FAFBFD; transition: border-color .15s, background .15s; }
+    .fpick + .fpick { margin-top: 8px; }
+    .fpick:hover { border-color: var(--fc); }
+    .fpick.on { border-style: solid; border-color: var(--fc); background: var(--fbg); }
+    .fpick .fic { background: var(--fc); color: #fff; font-weight: 700; font-size: 11.5px; border-radius: 7px; padding: 5px 0; min-width: 40px; text-align: center; letter-spacing: .5px; flex: none; }
+    .fpick .fname { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+    .fpick.on .fname { color: var(--ink); font-weight: 500; }
+    .fpick .fx { display: none; border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }
+    .fpick.on .fx { display: block; }
+    .fpick.xls { --fc: #1D7044; --fbg: #EEF8F2; }
+    .fpick.pdf { --fc: #C0392F; --fbg: #FCEDEB; }
+    .fpick.doc { --fc: #2B5797; --fbg: #EDF2FA; }
+    .fpick.img { --fc: #1A7686; --fbg: #E8F6F9; }
     .pcat { background: #F8F9FC; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-top: 10px; font-size: 14px; line-height: 1.8; }
     .pcat-row { margin-bottom: 8px; }
     .pcat-row b { display: block; color: var(--navy); font-size: 13px; }
@@ -627,7 +635,8 @@
     var e = String(n).split('.').pop().toLowerCase();
     return { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', heif: 'image/heif',
       pdf: 'application/pdf', mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/mp4', webm: 'video/webm',
-      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', csv: 'text/csv' }[e] || 'application/octet-stream';
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', csv: 'text/csv',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword' }[e] || 'application/octet-stream';
   }
   TH.guessMime = guessMime;
   /* أبعاد الصورة أو مدة المقطع قبل الرفع */
@@ -1175,21 +1184,33 @@
         '<label class="f">وصف المشروع <span class="req">*</span></label><textarea class="in pd" style="min-height:100px" placeholder="وش المشروع؟ أهدافه؟ ولمين موجّه؟"></textarea></div>' +
         '<label class="f">مواعيد المشروع</label><div class="pdates"></div><button type="button" class="add-mini padd">+ إضافة موعد</button>' +
         '<div class="pneedsBox hidden"><label class="f">احتياجات المشروع</label><textarea class="in pn" style="min-height:80px" placeholder="تصاميم، تغطية تصوير، نشر، مطبوعات، هدايا…"></textarea></div>' +
-        '<label class="f">ملف إكسل <span class="muted small">(اختياري: الخطة أو الميزانية أو الجدول)</span></label>' +
-        '<label class="xls-pick"><input type="file" class="pxls" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>' +
-          '<span class="xls-ic">XLS</span><span class="xls-name">اضغط لاختيار ملف إكسل</span></label>' +
+        '<label class="f">ملفات مرفقة <span class="muted small">(اختياري)</span></label>' +
+        '<label class="fpick xls"><input type="file" class="pxls" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>' +
+          '<span class="fic">XLS</span><span class="fname">ملف إكسل: الخطة أو الميزانية أو الجدول</span><button type="button" class="fx" aria-label="إزالة الملف">×</button></label>' +
+        '<label class="fpick pdoc-box"><input type="file" class="pdoc" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*" hidden>' +
+          '<span class="fic">PDF</span><span class="fname">ملف PDF أو وورد أو صورة: وصف مكتوب أو عرض أو خطاب</span><button type="button" class="fx" aria-label="إزالة الملف">×</button></label>' +
         '<div class="pnotes hidden"><label class="f">ملاحظات</label><textarea class="in px" style="min-height:70px" placeholder="أي شي تبي تضيفه"></textarea></div>' +
         '<button type="button" class="add-mini paddn">+ إضافة ملاحظات</button>';
       el.querySelector('.paddn').onclick = function () { el.querySelector('.pnotes').classList.remove('hidden'); this.remove(); el.querySelector('.px').focus(); };
       el.querySelector('.prm').onclick = function () { el.remove(); pRenumber(); };
       el.querySelector('.padd').onclick = function () { addDate(el, ''); };
-      el.querySelector('.pxls').addEventListener('change', function () {
-        var f = this.files[0], nm = el.querySelector('.xls-name');
-        if (!f) { nm.textContent = 'اضغط لاختيار ملف إكسل'; return; }
-        if (!/\.(xlsx|xls|csv)$/i.test(f.name)) { this.value = ''; nm.textContent = 'اضغط لاختيار ملف إكسل'; return TH.toast('اختر ملف إكسل (xlsx أو xls أو csv).', true); }
-        if (f.size > 31457280) { this.value = ''; return TH.toast('الملف أكبر من 30 م.ب.', true); }
-        nm.textContent = f.name + ' — ' + TH.size(f.size); el.querySelector('.xls-pick').classList.add('on');
-      });
+      // خانتا الملفات: إكسل، وPDF أو وورد
+      var bindPick = function (cls, re, errMsg, isDoc) {
+        var inp = el.querySelector('.' + cls), box = inp.closest('.fpick'), nm = box.querySelector('.fname'), ic = box.querySelector('.fic'), def = nm.textContent;
+        var reset = function () { inp.value = ''; nm.textContent = def; box.classList.remove('on', 'pdf', 'doc', 'img'); if (isDoc) ic.textContent = 'PDF'; };
+        box.querySelector('.fx').addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); reset(); });
+        inp.addEventListener('change', function () {
+          var f = this.files[0];
+          if (!f) return reset();
+          var isImg = isDoc && (/^image\//.test(f.type || '') || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name));
+          if (!re.test(f.name) && !isImg) { reset(); return TH.toast(errMsg, true); }
+          if (f.size > 31457280) { reset(); return TH.toast('الملف أكبر من 30 م.ب.', true); }
+          if (isDoc) { var pdf = /\.pdf$/i.test(f.name), kind = isImg ? 'img' : pdf ? 'pdf' : 'doc'; box.classList.remove('pdf', 'doc', 'img'); box.classList.add(kind); ic.textContent = { img: 'صورة', pdf: 'PDF', doc: 'DOC' }[kind]; }
+          nm.textContent = f.name + ' — ' + TH.size(f.size); box.classList.add('on');
+        });
+      };
+      bindPick('pxls', /\.(xlsx|xls|csv)$/i, 'اختر ملف إكسل (xlsx أو xls أو csv).');
+      bindPick('pdoc', /\.(pdf|docx?)$/i, 'اختر ملف PDF أو وورد أو صورة.', true);
       el.querySelector('.psel').addEventListener('change', function () {
         var k = this.value, c = PCAT[k], info = el.querySelector('.pinfo'), other = k === '__other';
         el.querySelector('.pmanual').classList.toggle('hidden', !other);
@@ -1308,8 +1329,8 @@
         var ds = collectDates(el);
         if (!bad && ds.bad) bad = 'المشروع ' + (i + 1) + ': ' + ds.bad;
         if (!bad && !ds.start) bad = 'المشروع ' + (i + 1) + ': حدد مواعيد المشروع.';
-        var xf = el.querySelector('.pxls').files[0];
-        projects.push({ _xls: xf || null, title: cat ? sel : g('.pt'), desc: cat ? 'الفئة المستهدفة: ' + cat.target + '\n' + cat.desc : g('.pd'), start: ds.start, end: ds.end, dates: ds.text, needs: cat ? cat.needs : g('.pn'), notes: g('.px') });
+        var pfiles = [el.querySelector('.pxls').files[0], el.querySelector('.pdoc').files[0]].filter(Boolean);
+        projects.push({ _files: pfiles, title: cat ? sel : g('.pt'), desc: cat ? 'الفئة المستهدفة: ' + cat.target + '\n' + cat.desc : g('.pd'), start: ds.start, end: ds.end, dates: ds.text, needs: cat ? cat.needs : g('.pn'), notes: g('.px') });
       });
       if (bad) return pErr(bad);
       if (!projects.length) return pErr('أضف مشروعًا واحدًا على الأقل.');
@@ -1317,11 +1338,12 @@
       var btn = document.getElementById('p_send'); btn.disabled = true; document.getElementById('p_sendTxt').textContent = 'جارٍ الإرسال…';
       var up = Promise.resolve();
       projects.forEach(function (pr, i) {
-        var f = pr._xls; delete pr._xls; pr.files = [];
-        if (!f) return;
-        up = up.then(function () {
-          document.getElementById('p_sendTxt').textContent = 'رفع ملف المشروع ' + (i + 1) + '…';
-          return TH.upload(f, 'request', '', function () {}).then(function (x) { pr.files = [{ id: x.id, name: f.name, mime: f.type || TH.guessMime(f.name), size: f.size }]; });
+        var list = pr._files || []; delete pr._files; pr.files = [];
+        list.forEach(function (f, j) {
+          up = up.then(function () {
+            document.getElementById('p_sendTxt').textContent = 'رفع ملفات المشروع ' + (i + 1) + (list.length > 1 ? ' (' + (j + 1) + ' من ' + list.length + ')' : '') + '…';
+            return TH.upload(f, 'request', '', function () {}).then(function (x) { pr.files.push({ id: x.id, name: f.name, mime: f.type || TH.guessMime(f.name), size: f.size }); });
+          });
         });
       });
       up.then(function () {
