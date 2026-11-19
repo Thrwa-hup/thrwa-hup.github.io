@@ -1427,8 +1427,44 @@
       youtube: function () { return 'youtube://'; }
     };
     var IS_MOB = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // ===== واتساب =====
+    // الكمبيوتر: يفتح واتساب ويب مباشرة في تبويب واحد يتكرر استخدامه (بدون صفحة «المشاركة عبر واتساب»، والإيموجي ما تخرب)
+    // الجوال: يفتح تطبيق واتساب نفسه، ولو ما هو منزّل يفتح الرابط العادي
+    function waNum(p) {
+      var n = String(p || '').replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }).replace(/\D/g, '');
+      if (/^05\d{8}$/.test(n)) n = '966' + n.slice(1); else if (/^5\d{8}$/.test(n)) n = '966' + n;
+      return n.length >= 11 ? n : '';
+    }
+    function waOpen(phone, text) {
+      var n = waNum(phone), q = [n ? 'phone=' + n : '', text ? 'text=' + encodeURIComponent(text) : ''].filter(Boolean).join('&');
+      if (text) copySync(text);
+      if (IS_MOB) {
+        var left = false, onHide = function () { if (document.hidden) left = true; };
+        document.addEventListener('visibilitychange', onHide);
+        location.href = 'whatsapp://send' + (q ? '?' + q : '');
+        setTimeout(function () {
+          document.removeEventListener('visibilitychange', onHide);
+          if (!left && !document.hidden) location.href = 'https://wa.me/' + n + (text ? '?text=' + encodeURIComponent(text) : '');
+        }, 1600);
+        return;
+      }
+      var w = window.open(q ? 'https://web.whatsapp.com/send?' + q : 'https://web.whatsapp.com/', 'tharwa_whatsapp');
+      if (w) { try { w.focus(); } catch (e) { /* لا شيء */ } }
+    }
+    // أي رابط واتساب في اللوحة يمر من هنا
+    document.addEventListener('click', function (e) {
+      if (e.defaultPrevented || e.button) return;
+      var a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+      var h = a.getAttribute('href') || '', u;
+      if (!/^(https:\/\/(wa\.me|api\.whatsapp\.com|web\.whatsapp\.com)\/|whatsapp:\/\/)/i.test(h)) return;
+      try { u = new URL(h.replace(/^whatsapp:\/\//i, 'https://x/')); } catch (err) { return; }
+      var phone = u.searchParams.get('phone') || (/wa\.me/i.test(h) ? u.pathname.replace(/\D/g, '') : '');
+      e.preventDefault();
+      waOpen(phone, u.searchParams.get('text') || '');
+    });
     function inAppBrowser() { return /FBAN|FBAV|Instagram|Line\/|Telegram|WhatsApp|GSA\/|Snapchat|TikTok|musical_ly|; wv\)/i.test(navigator.userAgent); }
     function goApp(k, text) {
+      if (k === 'whatsapp') return waOpen('', text);
       var web = APPLINK[k] ? APPLINK[k](text, IS_MOB) : (PAPP[k] || [])[1];
       if (!IS_MOB || !APPSCHEME[k]) { window.open(web, '_blank'); return; }
       var left = false, onHide = function () { if (document.hidden) left = true; };
