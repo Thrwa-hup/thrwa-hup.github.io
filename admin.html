@@ -379,6 +379,7 @@
     .tform { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; }
     @media (max-width: 900px) { .tform { grid-template-columns: 1fr 1fr; } .tform .tf-title { grid-column: 1 / -1; } }
   </style>
+  <link rel="stylesheet" href="assets/ly-panel.css">
 </head>
 <body class="app">
   <button class="menu-btn" id="menuBtn" type="button" aria-label="القائمة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -2272,5 +2273,10 @@
     document.getElementById('runNow').onclick = runNow;
     load();
   </script>
+  <!-- الولاء: قسم داخل نفس اللوحة، بياناته على Supabase عبر خادم المنصة -->
+  <script>window.LY_BASE = 'https://tharwa-platform-sage.vercel.app';</script>
+  <script src="assets/loyalty-engine.js"></script>
+  <script src="assets/ly-bridge.js"></script>
+  <script src="assets/ly-panel.js"></script>
 </body>
 </html>
