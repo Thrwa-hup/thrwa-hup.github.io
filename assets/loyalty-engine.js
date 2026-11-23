@@ -501,14 +501,27 @@
     return why.filter(function (w, i, arr) { return arr.indexOf(w) === i; });
   }
   function matchSuggestions(list) {
-    var out = [], dismissed = {}, freq = surnameFreq(list);
-    list.forEach(function (f) { (f.notSame || []).forEach(function (id) { dismissed[f.id + "|" + id] = dismissed[id + "|" + f.id] = true; }); });
-    for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length; j++) {
-      var a = list[i], b = list[j];
-      if (dismissed[a.id + "|" + b.id]) continue;
-      var why = siblingsWhy(a, b, freq);
-      if (why.length) out.push({ a: a, b: b, why: why });
-    }
+    var out = [], dismissed = {}, freq = surnameFreq(list), idx = {}, byId = {}, pairs = {};
+    list.forEach(function (f) { byId[f.id] = f; (f.notSame || []).forEach(function (id) { dismissed[f.id + "|" + id] = dismissed[id + "|" + f.id] = true; }); });
+    // فهرس بالأب والعائلة: نقارن بس الأسر اللي تشترك فيه (بدال كل أسرة مع كل أسرة)
+    list.forEach(function (f) {
+      (f.children || []).forEach(function (k) {
+        var fx = lastName(k.name), px = fatherName(k.name);
+        if (!fx || fx.length < 3 || !px) return;
+        var key = px + "|" + fx;
+        (idx[key] = idx[key] || []).indexOf(f.id) < 0 && idx[key].push(f.id);
+      });
+    });
+    Object.keys(idx).forEach(function (key) {
+      var ids = idx[key];
+      for (var i = 0; i < ids.length; i++) for (var j = i + 1; j < ids.length; j++) {
+        var pk = ids[i] < ids[j] ? ids[i] + "|" + ids[j] : ids[j] + "|" + ids[i];
+        if (pairs[pk] || dismissed[ids[i] + "|" + ids[j]]) continue;
+        pairs[pk] = true;
+        var a = byId[ids[i]], b = byId[ids[j]], why = siblingsWhy(a, b, freq);
+        if (why.length) out.push({ a: a, b: b, why: why });
+      }
+    });
     return out;
   }
   function mergeFamilies(a, b) {
