@@ -76,6 +76,11 @@
   var LAST_GRADE = { "ابتدائي": 6, "متوسط": 9 };
   var GRADES = { "ابتدائي": [1, 6], "متوسط": [7, 9], "ثانوي": [10, 12] };
   var STAGE_ORDER = { "ابتدائي": 1, "متوسط": 2, "ثانوي": 3 };
+  var GRADE_NAMES = ["", "أول ابتدائي", "ثاني ابتدائي", "ثالث ابتدائي", "رابع ابتدائي", "خامس ابتدائي", "سادس ابتدائي", "أول متوسط", "ثاني متوسط", "ثالث متوسط", "أول ثانوي", "ثاني ثانوي", "ثالث ثانوي"];
+  // الصفوف اللي يناسبها البرنامج أكيد (بسام 9–12 سنة = رابع إلى سادس)
+  var PROGRAM_GRADES = { "بسام": [4, 6], "تواق": [7, 9], "ترحال": [10, 12], "بناء": [10, 12] };
+  // العضويات والباقات ما تنحسب برنامج فات الطالب
+  var MEMBERSHIP = /عضوي|بلس|plus|برو\s*\d/i;
 
   // ---------- أدوات ----------
   function toLatinDigits(s) {
@@ -113,6 +118,26 @@
     return null;
   }
   function progGender(S, name) { var p = progInfo(S, name); return p ? p.g : null; }
+  function progGrades(S, p) { p = typeof p === "string" ? progInfo(S, p) : p; return p ? (p.grades || PROGRAM_GRADES[p.name] || GRADES[p.stage] || null) : null; }
+  function gradeName(g) { return GRADE_NAMES[parseInt(g, 10)] || ""; }
+  // الصف الدراسي الحالي للطالب، ومعه «تقريبًا» إذا انحسب من العمر
+  function gradeLabel(child) {
+    var n = gradeName(child && child.grade), fl = (child && child.flags) || {};
+    if (fl.graduated || parseInt(child && child.grade, 10) > 12) return "متخرج";
+    if (!n) return "";
+    return n + (fl.gradeEst ? " تقريبًا" : "");
+  }
+  // البرنامج المناسب لصفه الحالي (إذا البرنامج واضح من الصف والجنس)
+  function programFor(S, child) {
+    var g = parseInt(child.grade, 10), gender = child.gender || "m", hits = [];
+    if (!g) return null;
+    S.programs.forEach(function (p) {
+      var r = progGrades(S, p);
+      if (p.g === gender && p.status !== "قادم" && r && g >= r[0] && g <= r[1]) hits.push(p.name);
+    });
+    return hits.length === 1 ? hits[0] : null;
+  }
+  function countTxt(n, one, two, few, many) { return n === 1 ? one : n === 2 ? two : n <= 10 ? n + " " + few : n + " " + many; }
   function nextProgram(S, prog) {
     var p = progInfo(S, prog);
     if (!p || !NEXT_STAGE[p.stage]) return null;
@@ -129,7 +154,7 @@
       if (k === "tpl") { if (saved.tpl) Object.keys(S.tpl).forEach(function (t) { if (saved.tpl[t]) S.tpl[t] = saved.tpl[t]; }); }
       else if (saved[k] !== undefined && saved[k] !== null) S[k] = saved[k];
     });
-    S.programs = (S.programs || []).map(function (p) { return { name: p.name, g: p.g || "m", stage: p.stage || "", status: p.status || "قائم", desc: p.desc || "" }; });
+    S.programs = (S.programs || []).map(function (p) { var o = { name: p.name, g: p.g || "m", stage: p.stage || "", status: p.status || "قائم", desc: p.desc || "" }; if (p.grades) o.grades = p.grades; return o; });
     return S;
   }
   function today() { return new Date().toISOString().slice(0, 10); }
@@ -175,6 +200,40 @@
     return res;
   }
 
+  // برامج كل برنامج رئيسي (حسب التواريخ) عشان نحسب كم برنامج فات الطالب
+  function programEvents(list) {
+    var first = {}, out = {};
+    list.forEach(function (fam) {
+      (fam.regs || []).forEach(function (r) {
+        if (!r.date || MEMBERSHIP.test(r.cycle || "")) return;
+        var k = r.program + "|" + (r.cycle || r.term);
+        if (!first[k] || r.date < first[k].date) first[k] = { program: r.program, cycle: r.cycle || r.term, date: r.date, term: r.term };
+      });
+    });
+    Object.keys(first).forEach(function (k) { var e = first[k]; (out[e.program] = out[e.program] || []).push(e); });
+    Object.keys(out).forEach(function (p) { out[p].sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); });
+    return out;
+  }
+  function makeCtx(list, S) {
+    var start = "";
+    list.forEach(function (f) { (f.regs || []).forEach(function (r) { if (r.term === S.currentTerm && r.date && (!start || r.date < start)) start = r.date; }); });
+    return { founders: foundersMap(list, S), events: programEvents(list), termStart: start };
+  }
+  // كم برنامج فات الطالب بعد آخر مشاركة له (في البرنامج اللي يناسب صفه الحين)
+  function missedInfo(child, regs, S, ctx) {
+    if (!ctx || !ctx.events || !regs.length) return null;
+    var fl = child.flags || {};
+    if (fl.graduated || fl.adult || parseInt(child.grade, 10) > 12) return null;
+    var last = regs.reduce(function (m, r) { return !m || (r.date || "") > (m.date || "") ? r : m; }, null);
+    var target = programFor(S, child) || last.program;
+    var from = last.date || "";
+    if (target !== last.program && ctx.termStart && ctx.termStart > from) from = ctx.termStart;
+    var now = today();
+    var list = (ctx.events[target] || []).filter(function (e) { return e.date > (last.date || "") && e.date >= from && e.date <= now; });
+    var thisTerm = list.filter(function (e) { return !ctx.termStart || e.date >= ctx.termStart; }).length;
+    return { n: list.length, thisTerm: thisTerm, program: target, last: last, list: list };
+  }
+
   // ---------- الطالب: مسار التقدير ----------
   function itemKey(m, i) { return m.n + "-" + i; }
   function studentInfo(fam, child, S, ctx) {
@@ -198,16 +257,23 @@
     var progress = next ? Math.round((parts - prevN) * 100 / (next.n - prevN)) : 100;
     var programs = {};
     regs.forEach(function (r) { programs[r.program] = true; });
-    var inPrev = regs.some(function (r) { return r.term === S.previousTerm; });
+    var summer = String(S.previousTerm || "").split("-")[0] + "-صيفي";
+    var inPrev = regs.some(function (r) { return r.term === S.previousTerm || r.term === summer; });
     var inCur = regs.some(function (r) { return r.term === S.currentTerm; });
+    var missed = missedInfo(child, regs, S, ctx);
     var upgrade = null;
     var g = parseInt(child.grade, 10);
     if (g) Object.keys(programs).forEach(function (p) {
       var info = progInfo(S, p);
       if (info && LAST_GRADE[info.stage] === g && nextProgram(S, p) && !upgrade) upgrade = { from: p, to: nextProgram(S, p) };
     });
+    var fl = child.flags || {};
+    var gone = fl.graduated || fl.adult || g > 12;
     return { child: child, regs: regs, parts: parts, reached: reached, next: next, toNext: next ? next.n - parts : 0,
-      progress: progress, due: due, programs: Object.keys(programs), lapsed: inPrev && !inCur, inCur: inCur, upgrade: upgrade, founder: founder };
+      progress: progress, due: due, programs: Object.keys(programs), inCur: inCur, upgrade: upgrade, founder: founder,
+      grade: g || 0, gradeLabel: gradeLabel(child), missed: missed,
+      // منقطع: شارك في الفصل الماضي (أو الصيفي) وما شارك هذا الفصل، وفاته برنامج واحد على الأقل
+      lapsed: inPrev && !inCur && !gone && (!missed || missed.thisTerm > 0) };
   }
 
   // ---------- كوبون أسرة ثروة ----------
@@ -258,8 +324,15 @@
     var reach = [];
     var done = fam.reach || {};
     students.forEach(function (s) {
-      if (s.lapsed) reach.push({ key: "lapsed-" + s.child.id + "-" + S.currentTerm, kind: "lapsed", child: s.child.name, t: s.child.name + " سجّل في " + S.previousTerm + " وما سجّل في " + S.currentTerm });
-      if (s.upgrade) reach.push({ key: "stage-" + s.child.id + "-" + s.upgrade.to, kind: "stage", child: s.child.name, program: s.upgrade.to, t: s.child.name + " في آخر سنة من " + s.upgrade.from + "، وينتقل إلى " + s.upgrade.to });
+      var who = s.child.name + (s.gradeLabel ? " (" + s.gradeLabel + ")" : ""), girl = (s.child.gender || "m") === "f";
+      if (s.lapsed) {
+        var ms = s.missed, t;
+        if (ms) t = who + ": آخر مشاركة " + (girl ? "لها" : "له") + " «" + (ms.last.cycle || ms.last.program) + "» في " + ms.last.program + " (" + ms.last.term + ")، " + (girl ? "وفاتها " : "وفاته ") +
+          countTxt(ms.n, "برنامج واحد", "برنامجين", "برامج", "برنامج") + " في " + ms.program + " بعدها" + (ms.n ? "، آخرها «" + ms.list[ms.list.length - 1].cycle + "»" : "");
+        else t = who + " سجّل في " + S.previousTerm + " وما سجّل في " + S.currentTerm;
+        reach.push({ key: "lapsed-" + s.child.id + "-" + S.currentTerm, kind: "lapsed", child: s.child.name, missed: ms ? ms.n : null, t: t });
+      }
+      if (s.upgrade) reach.push({ key: "stage-" + s.child.id + "-" + s.upgrade.to, kind: "stage", child: s.child.name, program: s.upgrade.to, t: who + " في آخر سنة من " + s.upgrade.from + "، وينتقل إلى " + s.upgrade.to });
     });
     var regKids = students.filter(function (s) { return s.parts > 0; }).length;
     if ((fam.kidsCount || 0) > regKids) reach.push({ key: "kids-" + (fam.kidsCount || 0), kind: "kids", t: "عندهم " + ((fam.kidsCount || 0) - regKids) + " من الأبناء بعمر البرامج غير مسجلين" });
@@ -281,30 +354,25 @@
         var kidSet = {};
         inProg.forEach(function (r) { kidSet[r.childId] = true; });
         kidsIn += Object.keys(kidSet).length;
-        if (inProg.length) return;
-        var info = familyInfo(fam, S, ctx), why = [];
+        var info = familyInfo(fam, S, ctx), why = [], kidsOk = [], rngP = progGrades(S, p);
+        // بس الشي الأكيد: ابن بنفس جنس البرنامج، صفه الحالي معروف ويناسب البرنامج، وما سجّل فيه
         (fam.children || []).forEach(function (k) {
-          var g = parseInt(k.grade, 10), gender = k.gender || "m";
-          if (gender === p.g && g && rng && g >= rng[0] && g <= rng[1]) why.push(k.name + " في الصف المناسب");
+          var g = parseInt(k.grade, 10), fl = k.flags || {};
+          if ((k.gender || "m") !== p.g || !g || !rngP || fl.graduated || fl.adult) return;
+          if (g >= rngP[0] && g <= rngP[1] && !kidSet[k.id]) { why.push(k.name + " في " + gradeLabel(k)); kidsOk.push(k.name); }
         });
-        if (STAGE_ORDER[p.stage]) info.students.forEach(function (s) {
-          if ((s.child.gender || "m") !== p.g) return;
-          s.programs.forEach(function (pr) {
-            var q = progInfo(S, pr);
-            if (q && STAGE_ORDER[q.stage] > STAGE_ORDER[p.stage]) why.push("أخوه الأكبر " + s.child.name + " في " + pr + "، ممكن عندهم أصغر");
-          });
-        });
-        if ((fam.kidsCount || 0) > info.students.filter(function (s) { return s.parts > 0; }).length) why.push("عندهم أبناء بعمر البرامج غير مسجلين");
-        if (!why.length && !info.loyal) return;
-        targets.push({ fam: fam, loyal: info.loyal, why: why.filter(function (w, i, a) { return a.indexOf(w) === i; }), done: (fam.reach || {})[key] || "" });
+        if (!why.length) return;
+        targets.push({ fam: fam, loyal: info.loyal, why: why, kids: kidsOk, done: (fam.reach || {})[key] || "" });
       });
       targets.sort(function (a, b) { return (!!a.done - !!b.done) || (b.loyal - a.loyal) || (b.why.length - a.why.length); });
       var founders = (ctx.founders || {})[p.name] || [];
       return { program: p, key: key, regsCur: regsCur, kids: kidsIn, founders: founders, seatsLeft: p.status === "جديد" ? Math.max(0, S.foundersCap - founders.length) : 0, targets: targets };
     });
   }
-  function launchMessage(fam, p, S) {
-    return fillTpl(S.tpl.launch, msgVars(fam, S, { "البرنامج": p.name, "الوصف": p.desc || "", "الأيام": S.earlyDays, "المؤسسين": S.foundersCap }));
+  function launchMessage(fam, p, S, kidName) {
+    var v = { "البرنامج": p.name, "الوصف": p.desc || "", "الأيام": S.earlyDays, "المؤسسين": S.foundersCap };
+    if (kidName) v["الطالب"] = kidName;
+    return fillTpl(S.tpl.launch, msgVars(fam, S, v));
   }
   function founderMessage(fam, child, f, S) {
     return fillTpl(S.tpl.founder, msgVars(fam, S, { "الطالب": child.name, "البرنامج": f.program, "الرقم": f.n }));
@@ -355,14 +423,90 @@
     });
     return why.filter(function (w, i, arr) { return arr.indexOf(w) === i; });
   }
+  // ---------- إخوة مؤكدين في أسرتين ----------
+  // الدليل: نفس اسم الأب والعائلة، ومعه دليل ثاني أكيد: جوال مشترك، أو اسم ولي الأمر هو اسم الأب، أو نفس اسم الجد، أو العائلة ما تتكرر إلا عندهم
+  var LATIN = { mohammed: "محمد", mohamed: "محمد", muhammad: "محمد", mohammad: "محمد", mohamad: "محمد", abdullah: "عبدالله", abdulla: "عبدالله", abdulaziz: "عبدالعزيز",
+    abdulrahman: "عبدالرحمن", abdurrahman: "عبدالرحمن", khalid: "خالد", khaled: "خالد", saad: "سعد", fahad: "فهد", fahd: "فهد", faisal: "فيصل", sultan: "سلطان", majed: "ماجد", majid: "ماجد",
+    bander: "بندر", bandar: "بندر", nasser: "ناصر", naser: "ناصر", saleh: "صالح", salih: "صالح", ahmed: "احمد", ahmad: "احمد", ibrahim: "ابراهيم", sulaiman: "سليمان", sulaman: "سليمان",
+    suliman: "سليمان", turki: "تركي", yousef: "يوسف", yousif: "يوسف", yosef: "يوسف", omar: "عمر", ali: "علي", hamad: "حمد", mansour: "منصور", mansoor: "منصور", nawaf: "نواف", bader: "بدر",
+    badr: "بدر", mishal: "مشعل", meshal: "مشعل", waleed: "وليد", walid: "وليد", tariq: "طارق", tareq: "طارق", hamed: "حامد", ayman: "ايمن", hisham: "هشام", hesham: "هشام", osama: "اسامه", usama: "اسامه",
+    abdulmajeed: "عبدالمجيد", abdulmohsen: "عبدالمحسن", abdulelah: "عبدالاله", saud: "سعود", rashed: "راشد", rashid: "راشد", zaid: "زيد", ziad: "زياد", sami: "سامي", adel: "عادل", hassan: "حسن", hussain: "حسين" };
+  function firstName(n) {
+    var raw = String(n || "").trim().split(/\s+/)[0] || "";
+    if (/^[a-z]+$/i.test(raw)) return normName(LATIN[raw.toLowerCase()] || "");
+    return (normName(n).split(" ")[0]) || "";
+  }
+  var nameToks = function (n) { return normName(n).split(" ").filter(function (w) { return w && w !== "ال"; }); };
+  function lastName(n) { var t = nameToks(n); return t.length >= 2 ? t[t.length - 1] : ""; }
+  function fatherName(n) { var t = nameToks(n); return t.length >= 3 ? t[1] : ""; }
+  function grandName(n) { var t = nameToks(n); return t.length >= 4 ? t[2] : ""; }
+  function surnameFreq(list) {
+    var f = {};
+    list.forEach(function (fam) {
+      var seen = {};
+      (fam.children || []).forEach(function (k) { var s = lastName(k.name); if (s && !seen[s]) { seen[s] = 1; f[s] = (f[s] || 0) + 1; } });
+    });
+    return f;
+  }
+  // أسماء منتشرة: تطابقها لحاله ما يكفي دليل
+  var COMMON = {};
+  ["محمد", "عبدالله", "عبدالرحمن", "عبدالعزيز", "فهد", "خالد", "سعد", "سعود", "ناصر", "ابراهيم", "احمد", "علي", "صالح", "سليمان", "فيصل", "سلطان", "تركي", "عبدالمحسن",
+    "عبدالمجيد", "حمد", "منصور", "ماجد", "بندر", "نايف", "مشعل", "يوسف", "عمر", "عبدالاله", "نواف", "بدر", "وليد", "طارق", "حسن", "حسين", "سامي", "عادل", "مساعد", "متعب"]
+    .forEach(function (n) { COMMON[normName(n)] = 1; });
+  // هيكل الحروف الساكنة: «Alsubaie» = «السبيعي»، «Alyousef» = «اليوسف»
+  var AR2LAT = { "ب": "b", "ت": "t", "ث": "t", "ج": "j", "ح": "h", "خ": "k", "د": "d", "ذ": "d", "ر": "r", "ز": "z", "س": "s", "ش": "s", "ص": "s", "ض": "d", "ط": "t", "ظ": "z",
+    "غ": "g", "ف": "f", "ق": "k", "ك": "k", "ل": "l", "م": "m", "ن": "n", "ه": "h" };
+  function skel(w) {
+    w = String(w || "").toLowerCase();
+    if (/[a-z]/.test(w)) {
+      w = w.replace(/^(al|el)[-\s]?/, "").replace(/sh/g, "s").replace(/th/g, "t").replace(/kh/g, "k").replace(/dh/g, "d").replace(/gh/g, "g").replace(/ph/g, "f").replace(/q/g, "k").replace(/c/g, "k").replace(/g/g, "k").replace(/j/g, "j");
+      w = w.replace(/[aeiouyw'\-\s]/g, "");
+    } else {
+      w = normName(w).replace(/^ال/, "").split("").map(function (c) { return AR2LAT[c] || ""; }).join("").replace(/g/g, "k");
+    }
+    return w.replace(/(.)\1+/g, "$1");
+  }
+  function parentMatchesFamily(parent, fam) {
+    var raw = String(parent || "").trim().split(/\s+/), last = raw.length >= 2 ? raw[raw.length - 1] : "";
+    if (!last) return false;
+    if (/[a-z]/i.test(last)) return skel(last).length >= 2 && skel(last) === skel(fam);
+    return lastName(parent) === fam;
+  }
+  function siblingsWhy(a, b, freq) {
+    var why = [], shared = famPhones(a).some(function (p) { return famPhones(b).indexOf(p) >= 0; });
+    var orders = {};
+    (a.regs || []).forEach(function (r) { if (r.order) orders[r.order] = 1; });
+    var sameOrder = (b.regs || []).some(function (r) { return r.order && orders[r.order]; });
+    var kidsAll = (a.children || []).concat(b.children || []);
+    (a.children || []).forEach(function (x) {
+      (b.children || []).forEach(function (y) {
+        var fx = lastName(x.name), px = fatherName(x.name);
+        if (!fx || fx.length < 3 || !px || fx !== lastName(y.name) || px !== fatherName(y.name)) return;
+        // أسرة فيها أبناء لأب ثاني (مثل ابن عم سجّله عمه): ما ندمجها
+        var mixed = kidsAll.some(function (k) { var f = fatherName(k.name), l = lastName(k.name); return (f && f !== px) || (l && nameToks(k.name).length >= 2 && l !== fx); });
+        if (mixed) return;
+        var proof = "";
+        if (shared) proof = "جوال مشترك";
+        else if (sameOrder) proof = "انسجلوا في نفس الطلب";
+        else if (grandName(x.name) && grandName(x.name) === grandName(y.name)) proof = "نفس اسم الجد";
+        else [a.name, b.name].forEach(function (P) {
+          if (proof || firstName(P) !== px) return;
+          if (parentMatchesFamily(P, fx)) proof = "ولي الأمر «" + String(P).trim() + "» نفس اسم الأب والعائلة";
+          else if (!COMMON[px]) proof = "ولي الأمر اسمه " + px;
+        });
+        if (!proof && !COMMON[px]) proof = "اسم الأب «" + px + "» مع العائلة ما يتكرر";
+        if (proof) why.push(x.name + " و" + y.name + ": نفس الأب والعائلة، و" + proof);
+      });
+    });
+    return why.filter(function (w, i, arr) { return arr.indexOf(w) === i; });
+  }
   function matchSuggestions(list) {
-    var out = [], dismissed = {};
+    var out = [], dismissed = {}, freq = surnameFreq(list);
     list.forEach(function (f) { (f.notSame || []).forEach(function (id) { dismissed[f.id + "|" + id] = dismissed[id + "|" + f.id] = true; }); });
     for (var i = 0; i < list.length; i++) for (var j = i + 1; j < list.length; j++) {
       var a = list[i], b = list[j];
       if (dismissed[a.id + "|" + b.id]) continue;
-      var kn = function (f) { return (f.children || []).map(function (k) { return k.name; }); };
-      var why = sameFamilyWhy(a.name, kn(a), b.name, kn(b));
+      var why = siblingsWhy(a, b, freq);
       if (why.length) out.push({ a: a, b: b, why: why });
     }
     return out;
@@ -527,7 +671,8 @@
     DEFAULT_SETTINGS: DEFAULT_SETTINGS, DISCOUNT_TYPES: DISCOUNT_TYPES, OLD_LABELS: OLD_LABELS, NEED_FLAGS: NEED_FLAGS, GRADES: GRADES,
     toLatinDigits: toLatinDigits, normPhone: normPhone, displayPhone: displayPhone, normName: normName, sameKid: sameKid, progInfo: progInfo, progGender: progGender,
     nextProgram: nextProgram, mergeSettings: mergeSettings, today: today, uid: uid, clone: clone, famPhones: famPhones, findFamily: findFamily,
-    foundersMap: foundersMap, studentInfo: studentInfo, osraInfo: osraInfo, familyInfo: familyInfo, launchInfo: launchInfo,
+    foundersMap: foundersMap, makeCtx: makeCtx, programEvents: programEvents, gradeName: gradeName, gradeLabel: gradeLabel, programFor: programFor, siblingsWhy: siblingsWhy,
+    studentInfo: studentInfo, osraInfo: osraInfo, familyInfo: familyInfo, launchInfo: launchInfo,
     matchSuggestions: matchSuggestions, mergeFamilies: mergeFamilies, nameCandidates: nameCandidates, interestMatch: interestMatch,
     fillTpl: fillTpl, msgVars: msgVars, milestoneMessage: milestoneMessage, badgeMessage: badgeMessage, reachMessage: reachMessage,
     discountMessage: discountMessage, osraMessage: osraMessage, launchMessage: launchMessage, founderMessage: founderMessage, interestMessage: interestMessage,

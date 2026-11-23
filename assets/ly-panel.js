@@ -86,7 +86,7 @@
   function options(arr, sel) { return arr.map(function (v) { var val = typeof v === "string" ? v : v.v, lab = typeof v === "string" ? v : v.l; return '<option value="' + E(val) + '"' + (String(val) === String(sel) ? " selected" : "") + ">" + E(lab) + "</option>"; }).join(""); }
   function gradeOptions(sel) { var h = '<option value="">—</option>'; for (var i = 1; i <= 12; i++) h += '<option value="' + i + '"' + (String(sel) === String(i) ? " selected" : "") + ">" + gradeName(i) + "</option>"; return h; }
   function pane(id) { return document.getElementById("p-lyc-" + id); }
-  function allInfo() { CTX = { founders: LY.foundersMap(list(), S) }; return list().map(function (f) { return { f: f, i: LY.familyInfo(f, S, CTX) }; }); }
+  function allInfo() { CTX = LY.makeCtx ? LY.makeCtx(list(), S) : { founders: LY.foundersMap(list(), S) }; return list().map(function (f) { return { f: f, i: LY.familyInfo(f, S, CTX) }; }); }
   function students(A) { var out = []; A.forEach(function (x) { x.i.students.forEach(function (s) { out.push({ f: x.f, fi: x.i, s: s }); }); }); return out; }
   var newPrograms = function () { return S.programs.filter(function (p) { return p.status === "جديد"; }); };
 
@@ -191,7 +191,7 @@
       '<div class="block"><h3><span class="dot n"></span>خصومات مستحقة</h3><p class="hint">بند الرفقة (للي يجيب أقاربه وأصحابه) وبند الإخوان (أكثر من ابن في نفس البرنامج).</p>' + issued + (d.discs.length ? d.discs.map(function (x) { return discRow(x, false); }).join("") : issued ? "" : '<div class="empty">ما فيه خصومات مستحقة.</div>') + "</div>" +
       '<div class="block"><h3><span class="dot p"></span>كوبون «أسرة ثروة»</h3><p class="hint">كود ثابت لكل أسرة عندها أبناء في برامج مختلفة. قيمته ' + S.osra2 + "% لبرنامجين، و" + S.osra3 + "% لثلاثة، و" + S.osra4 + "% لأربعة فأكثر. لما تتغير القيمة، حدّث القسيمة في المتجر ثم اضغط «حدّثته».</p>" +
       (d.osra.length ? d.osra.map(osraRow).join("") : '<div class="empty">ما فيه كوبونات تحتاج تحديث.</div>') + "</div>" +
-      '<div class="block"><h3><span class="dot g"></span>تواصل بدون خصم</h3><p class="hint">منقطعون، أو في آخر سنة من مرحلتهم، أو عندهم إخوان غير مسجلين.</p>' + (d.reach.length ? d.reach.map(function (x) {
+      '<div class="block"><h3><span class="dot g"></span>تواصل بدون خصم</h3><p class="hint">منقطعون (شاركوا الفصل الماضي أو الصيفي، وفاتهم برنامج هذا الفصل)، أو في آخر سنة من مرحلتهم، أو أهلهم ذكروا أبناء غير مسجلين.</p>' + (d.reach.length ? d.reach.map(function (x) {
         return x.i.reach.map(function (r) { return '<div class="pend"><div><div class="lbl">' + E(x.f.name || "") + '</div><div class="why">' + E(r.t) + '</div></div><span class="actions" style="margin:0">' + waBtn(x.f.phone, LY.reachMessage(x.f, r, S), "رسالة") + '<button class="btn sm ghost" data-act="reached" data-f="' + E(x.f.id) + '" data-k="' + E(r.key) + '">تم</button></span></div>'; }).join("");
       }).join("") : '<div class="empty">ما فيه أسر تحتاج تواصل.</div>') + "</div>";
     bindActs(el);
@@ -200,7 +200,7 @@
   // ---------- الطلاب ----------
   function renderStudents(el) {
     var m = DATA.matches;
-    el.innerHTML = statusBar() + (m.length ? '<div class="block"><h3><span class="dot o"></span>ممكن نفس الأسرة (' + m.length + ')</h3><p class="hint">أسر بجوالات مختلفة وأسماء متطابقة، مثل الأب والأم. الدمج يجمع الأبناء والمشاركات تحت أسرة وحدة بالجوالين.</p>' + m.slice(0, 20).map(function (x, i) {
+    el.innerHTML = statusBar() + (m.length ? '<div class="block"><h3><span class="dot o"></span>إخوة مسجلين في أسرتين (' + m.length + ')</h3><p class="hint">نفس اسم الأب والعائلة، ومعه دليل ثاني أكيد: جوال مشترك، أو نفس طلب التسجيل، أو اسم ولي الأمر، أو اسم الجد. الدمج يجمعهم تحت أسرة وحدة بالجوالين.</p>' + m.slice(0, 20).map(function (x, i) {
       var side = function (f) { return "<div><b>" + E(f.name || "—") + '</b><div class="small muted ltr" style="text-align:right">' + E(LY.famPhones(f).map(LY.displayPhone).join(" · ")) + '</div><div class="small">' + E((f.children || []).map(function (k) { return k.name; }).join("، ")) + "</div></div>"; };
       return '<div class="match">' + side(x.a) + '<div class="mid"><span class="small">' + E(x.why.join("، ")) + '</span><button class="btn sm primary" data-merge="' + i + '">' + I("merge") + 'دمج</button><button class="btn sm ghost" data-notsame="' + i + '">مو نفسها</button></div>' + side(x.b) + "</div>";
     }).join("") + "</div>" : "") +
@@ -217,9 +217,9 @@
         return true;
       }).sort(function (a, b) { return (b.s.due.length > 0) - (a.s.due.length > 0) || b.s.parts - a.s.parts; });
       document.getElementById("lc").textContent = rows.length + " من " + DATA.ST.length + " طالب";
-      document.getElementById("lt").innerHTML = rows.length ? "<thead><tr><th>الطالب</th><th>المشاركات</th><th>المرحلة</th><th>للمرحلة الجاية</th><th>مستحق</th><th></th></tr></thead><tbody>" + rows.slice(0, stLimit).map(function (x) {
+      document.getElementById("lt").innerHTML = rows.length ? "<thead><tr><th>الطالب</th><th>المشاركات</th><th>مستواه</th><th>للمرحلة الجاية</th><th>مستحق</th><th></th></tr></thead><tbody>" + rows.slice(0, stLimit).map(function (x) {
         var s = x.s;
-        return '<tr><td class="who"><b>' + E(s.child.name) + "</b><small>" + E(x.f.name || "") + " · " + E(LY.displayPhone(x.f.phone)) + "</small><small>" + E(s.programs.join("، ")) + (s.lapsed ? ' · <span class="badge bad">منقطع</span>' : "") + s.founder.map(function (fd) { return ' <span class="lvl fd">مؤسس ' + E(fd.program) + " #" + fd.n + "</span>"; }).join("") + "</small></td>" +
+        return '<tr><td class="who"><b>' + E(s.child.name) + "</b><small>" + E(x.f.name || "") + " · " + E(LY.displayPhone(x.f.phone)) + "</small><small>" + (s.gradeLabel ? "الصف: " + E(s.gradeLabel) + " · " : "") + E(s.programs.join("، ")) + (s.lapsed ? ' · <span class="badge bad">منقطع' + (s.missed && s.missed.n ? " · فاته " + s.missed.n : "") + "</span>" : "") + s.founder.map(function (fd) { return ' <span class="lvl fd">مؤسس ' + E(fd.program) + " #" + fd.n + "</span>"; }).join("") + "</small></td>" +
           "<td><b>" + s.parts + "</b></td><td>" + msPill(s.reached) + "</td><td>" + (s.next ? '<div class="prog-mini"><div class="progress"><i style="width:' + s.progress + '%"></i></div><small>باقي ' + s.toNext + " لـ «" + E(s.next.name) + "»</small></div>" : '<span class="lvl l3">آخر مرحلة</span>') + "</td>" +
           "<td>" + (s.due.length ? '<span class="badge or">' + giftsTxt(s.due.length) + "</span>" : '<span class="muted">—</span>') + '</td><td><button class="btn sm" data-act="open" data-f="' + E(x.f.id) + '" data-c="' + E(s.child.id) + '">فتح</button></td></tr>';
       }).join("") + "</tbody>" : '<tr><td class="empty">ما فيه طلاب يطابقون البحث.</td></tr>';
@@ -253,11 +253,11 @@
         (p.status === "جديد" ? "<b>المؤسسون " + n + " من " + S.foundersCap + (x.seatsLeft ? " · باقي " + x.seatsLeft + " مقعد" : " · اكتملوا") + '</b><div class="seats">' + seats + '</div><div class="wall">' + (n ? x.founders.map(function (f) { return "<span><b>#" + f.n + "</b> " + E(f.name) + "</span>"; }).join("") : '<span class="muted">ما فيه مؤسسين للحين.</span>') + "</div>" : "") +
         '<div class="pend" style="margin-top:12px"><div><div class="lbl">قائمة الاهتمام: ' + intr.length + '</div><div class="why">رابط التسجيل المبكر للأهالي</div></div><span class="actions" style="margin:0"><button class="btn sm ghost" data-copy="' + E(link + "?p=" + encodeURIComponent(p.name)) + '">' + I("copy") + 'نسخ الرابط</button><button class="btn sm" data-go="interest">فتح القائمة</button></span></div>' +
         '<div class="hint">مسجلين هذا الفصل: ' + x.regsCur + " · أطفال سجلوا فيه: " + x.kids + "</div></div>" +
-        '<div><b>ادعُهم قبل الإعلان العام (' + todo + ')</b><p class="hint" style="margin:2px 0 8px">الأسر المستمرة أولًا، ثم اللي عندهم ابن في الصف المناسب أو أخ أكبر في برنامج ثاني. التسجيل المبكر ' + S.earlyDays + " أيام قبل الإعلان.</p>" +
+        '<div><b>ادعُهم قبل الإعلان العام (' + todo + ')</b><p class="hint" style="margin:2px 0 8px">بس الأكيد: أسر عندها ابن مسجّل عندنا، صفه الحالي يناسب البرنامج، وما سجّل فيه. المستمرة أولًا. التسجيل المبكر ' + S.earlyDays + " أيام قبل الإعلان.</p>" +
         (x.targets.length ? x.targets.slice(0, 60).map(function (t) {
-          return '<div class="pend"' + (t.done ? ' style="opacity:.55"' : "") + '><div><div class="lbl">' + E(t.fam.name || (t.fam.children[0] || {}).name || "") + (t.loyal ? ' <span class="lvl l2">مستمرة</span>' : "") + '</div><div class="why">' + E(t.why.join("، ") || "أسرة مستمرة") + (t.done ? " · دُعيت " + E(t.done) : "") + "</div></div>" +
-            '<span class="actions" style="margin:0">' + waBtn(t.fam.phone, LY.launchMessage(t.fam, p, S) + (p.status === "قادم" ? "\nسجّل اهتمامك: " + link + "?p=" + encodeURIComponent(p.name) : ""), "دعوة") + (t.done ? "" : '<button class="btn sm ghost" data-act="invited" data-f="' + E(t.fam.id) + '" data-k="' + E(x.key) + '">تمت</button>') + "</span></div>";
-        }).join("") : '<div class="empty">ما فيه أسر مرشحة. أضف الصف الدراسي للطلاب وعدد الأبناء لتطلع لك الأسر المناسبة.</div>') + "</div></div></div>";
+          return '<div class="pend"' + (t.done ? ' style="opacity:.55"' : "") + '><div><div class="lbl">' + E(t.fam.name || (t.fam.children[0] || {}).name || "") + (t.loyal ? ' <span class="lvl l2">مستمرة</span>' : "") + '</div><div class="why">' + E(t.why.join("، ")) + (t.done ? " · دُعيت " + E(t.done) : "") + "</div></div>" +
+            '<span class="actions" style="margin:0">' + waBtn(t.fam.phone, LY.launchMessage(t.fam, p, S, (t.kids || []).join(" و")) + (p.status === "قادم" ? "\nسجّل اهتمامك: " + link + "?p=" + encodeURIComponent(p.name) : ""), "دعوة") + (t.done ? "" : '<button class="btn sm ghost" data-act="invited" data-f="' + E(t.fam.id) + '" data-k="' + E(x.key) + '">تمت</button>') + "</span></div>";
+        }).join("") : '<div class="empty">ما عندنا ابن مسجّل صفه يناسب ' + E(p.name) + ' وما سجّل فيه. الأسر اللي ما نعرف أعمار أبنائها ما نرشحها. أضف الصف الدراسي للطالب من بطاقته ويطلع هنا.</div>') + "</div></div></div>";
     }).join("") : '<div class="empty">' + I("rocket") + '<p>ما فيه برنامج جديد أو قادم. غيّر حالة البرنامج من «الإعدادات ← البرامج».</p></div>');
     bindActs(el);
   }
