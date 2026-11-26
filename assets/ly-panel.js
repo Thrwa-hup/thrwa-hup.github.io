@@ -76,7 +76,7 @@
   function guardDemo() { if (isDemo()) { TH.toast("هذا مثال. أضف طلابك من «إضافة طالب» والأمثلة تختفي"); return true; } return false; }
 
   // ---------- أدوات العرض ----------
-  function msPill(m) { return m ? '<span class="lvl l' + Math.min(4, 1 + Math.floor(S.milestones.indexOf(m) / 1.5)) + '">' + E(m.name) + "</span>" : '<span class="lvl l0">بدون مشاركة</span>'; }
+  function msPill(m) { return m ? '<span class="lvl l' + Math.min(4, 1 + Math.floor(S.milestones.indexOf(m) / 1.5)) + '" title="' + E(m.n + " مشاركات: " + (m.items || []).join(" · ")) + '">' + E(m.name) + "</span>" : '<span class="lvl l0">بدون مشاركة</span>'; }
   function waBtn(phone, msg, label) { return '<a class="btn sm wa" href="' + E(LY.waLink(phone, msg)) + '" target="_blank" rel="noopener">' + I("chat") + E(label || "واتساب") + "</a>"; }
   function discLabel(t) { return (LY.DISCOUNT_TYPES[t] && LY.DISCOUNT_TYPES[t].label) || LY.OLD_LABELS[t] || t; }
   function discValue(w) { return w.type === "free" ? "مجانًا" : (w.value || 0) + "%"; }
@@ -93,7 +93,7 @@
   // ---------- الرسم ----------
   var TABS = function (c) {
     return [["today", "gift", "المطلوب اليوم", c.today], ["students", "users", "الطلاب", c.matches ? c.matches : 0], ["launch", "rocket", "الإطلاق"], ["interest", "list", "قائمة الاهتمام", c.interest],
-      ["add", "user", "إضافة طالب"], ["settings", "gear", "الإعدادات"]];
+      ["add", "user", "إضافة طالب"], ["guide", "star", "دليل الكوبونات"], ["settings", "gear", "الإعدادات"]];
   };
   var DATA = null;
   function compute() {
@@ -150,6 +150,7 @@
     if (t === "interest") renderInterest(el);
     if (t === "add") renderAdd(el);
     if (t === "settings") renderSettings(el);
+    if (t === "guide") renderGuide(el);
     el.querySelectorAll("[data-go]").forEach(function (b) { b.onclick = function () { ADM.setTab(b.dataset.go); }; });
   }
 
@@ -511,6 +512,50 @@
         el.querySelector("#impInfo").textContent = "انضافت " + added + " مشاركة" + (dup ? " · " + dup + " مكررة" : ""); TH.toast("خلصت الإضافة");
       });
     };
+  }
+
+  // ---------- دليل الكوبونات: وش يسوى كل مسمّى (الأرقام من الإعدادات) ----------
+  function renderGuide(el) {
+    var P = function (n) { return '<b class="code">' + E(n) + "%</b>"; };
+    var card = function (name, prefix, who, rows, how) {
+      return '<div class="pend" style="display:block"><div class="lbl">' + E(name) + (prefix ? ' <span class="lvl l0 ltr">' + E(prefix) + "…</span>" : "") + '</div>' +
+        '<div class="why" style="margin:4px 0 8px">' + who + "</div>" +
+        '<div style="display:grid;gap:4px">' + rows.map(function (r) { return '<div style="display:flex;justify-content:space-between;gap:12px;border-top:1px dashed var(--line);padding-top:4px"><span>' + r[0] + "</span><span>" + r[1] + "</span></div>"; }).join("") + "</div>" +
+        '<div class="why" style="margin-top:8px">' + how + "</div></div>";
+    };
+    var needs = LY.NEED_FLAGS.map(function (f) { return E(f.t); }).join("، أو ");
+    var h = '<div class="block"><h3>' + I("star") + 'طريقة الكوبونات</h3><p class="hint">عندنا نوعين: <b>أكواد خصم</b> لها قيمة بالنسبة، تصدر لفئات محددة بس. و<b>مراحل تقدير</b> تنفتح بعدد المشاركات، وهي هدايا وتكريم بدون خصم. ' +
+      'الأرقام هنا من «إعدادات الولاء»، وأي تعديل هناك يتغير هنا.</p></div>';
+    h += '<div class="block"><h3>أكواد الخصم وقيمتها</h3>' +
+      card("كوبون «أسرة ثروة»", "OSRA", "للأسرة اللي أبناءها مسجلين في برامج مختلفة (ابن في تواق وبنت في نيورا مثلًا).",
+        [["أبناء في برنامجين", P(S.osra2)], ["في 3 برامج", P(S.osra3)], ["في 4 برامج فأكثر", P(S.osra4)]],
+        "كود ثابت للأسرة، وتزيد قيمته لما يسجلون في برنامج زيادة. يطلع في «المطلوب اليوم» ← «إصدار الكود»، وتنشئه بنفس الرمز والنسبة في المتجر.") +
+      card("بند الإخوان", "SIB", "لأكثر من أخ في <b>نفس البرنامج ونفس الفصل</b>.",
+        [["أخوين", P(S.sib2)], ["3 إخوان فأكثر", P(S.sib3)]],
+        "يطلع تلقائيًا في «المطلوب اليوم» لما يسجل الأخ الثاني، وصلاحيته هذا الفصل.") +
+      card("بند الرفقة", "BONUS / FREE", "للطالب اللي جاب قريب أو صديق سجّل بكود الإحالة حق أسرته <b>هذا الفصل</b>.",
+        [["جاب واحد", P(S.ref1)], ["جاب اثنين", P(S.ref2)], ["جاب " + S.refCap + " فأكثر", "<b>دورة مجانية</b>"], ["المسجّل الجديد نفسه", P(S.newPct)]],
+        "كود الإحالة ترسله من بطاقة الأسرة ← «أرسل كود الإحالة». المكافأة تطلع تلقائيًا في «المطلوب اليوم».") +
+      card("هدية منّا", "GIFT", "للأسرة اللي التكلفة سبب ترددها أو انقطاعها: " + needs + ".",
+        [["قيمة الهدية", P(S.needPct)]],
+        "علّم «علامة الحاجة» من بطاقة الطالب، فيطلع طلب «هدية منّا» في «المطلوب اليوم» ينتظر اعتمادك. لو رفضته ما يرجع يطلع لهم هذا الفصل.") +
+      "</div>";
+    h += '<div class="block"><h3>القواعد</h3><div style="display:grid;gap:6px">' +
+      ['<b>خصم واحد للأسرة</b> في الفصل، والأعلى يكسب. ما ينصدر كود أقل من كود صدر لهم هذا الفصل، ولا أقل من كوبون أسرة ثروة.',
+        "أقصى خصم " + P(S.maxPct) + "، ما عدا الدورة المجانية.",
+        "أكواد الإخوان والرفقة وهدية منّا لهذا الفصل بس. كوبون أسرة ثروة ثابت ويتحدث.",
+        "كل كود يصدر من اللوحة ينحفظ في بطاقة الطالب في جدول الأكواد: الكود، والبند، والقيمة، وحالته (مرسل، مستخدم، ملغى)."]
+        .map(function (t) { return '<div class="pend"><div class="why" style="color:inherit">' + t + "</div></div>"; }).join("") + "</div></div>";
+    h += '<div class="block"><h3>مراحل التقدير (هدايا بدون خصم)</h3><p class="hint">تنفتح بعدد مشاركات الطالب في كل البرامج. الهدية اللي تبدأ بـ «للأهل:» للأهل.</p>' +
+      S.milestones.map(function (m, i) {
+        return '<div class="pend" style="display:block"><div class="lbl">' + m.n + " " + (m.n === 1 ? "مشاركة" : m.n === 2 ? "مشاركتين" : m.n <= 10 ? "مشاركات" : "مشاركة") +
+          " " + msPill(m) + "</div>" +
+          '<div class="why" style="margin-top:4px">' + m.items.map(E).join(" · ") + "</div></div>";
+      }).join("") +
+      '<div class="pend" style="display:block"><div class="lbl">المؤسسون <span class="lvl fd">أول ' + S.foundersCap + " مسجل في برنامج جديد</span></div>" +
+      '<div class="why" style="margin-top:4px">' + S.founderItems.map(function (x) { return E(x.replace(/\{البرنامج\}/g, "البرنامج")); }).join(" · ") + "</div></div></div>";
+    h += '<div class="actions"><button class="btn" data-go="settings">' + I("gear") + "تعديل النسب والمراحل</button></div>";
+    el.innerHTML = h;
   }
 
   // ---------- الإعدادات ----------
