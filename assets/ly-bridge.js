@@ -48,6 +48,7 @@
     ["launch", "rocket", "الإطلاق"],
     ["interest", "list", "قائمة الاهتمام"],
     ["add", "user", "إضافة طالب"],
+    ["guide", "star", "دليل الكوبونات"],
     ["settings", "gear", "إعدادات الولاء"]
   ];
   var COUNTS = {};
